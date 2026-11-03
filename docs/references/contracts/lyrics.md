@@ -83,6 +83,8 @@
 5. 在线 provider 的请求失败不会被当作确定缺失；后端会继续尝试后续 provider，并且不会写入 negative cache
 6. 如果所有来源都 miss，命令仍然成功返回；只是 `lines = []`、`source = null`
 7. 如果歌曲不存在、文件读取失败或歌词解析失败，命令返回 `CommandError`
+8. 内嵌文本先按标签顺序检查 `ItemKey::Lyrics` 的所有候选，没有非空文本时再检查 `ItemKey::UnsyncLyrics`。后者覆盖 MP3 ID3v2 `USLT` 和映射至该键的 FFmpeg `TXXX:USLT`。空白候选会跳过；首个非空文本仍走现有 LRC 解析和纯文本回退，不合并不同版本。SYLT 不在支持范围内。
+9. 内嵌 LRC 使用已有时间戳和 `[offset:]` 处理，不改变来源优先级或缓存失效策略。已有正缓存及未过期的 negative cache 不会因文件内嵌歌词变化而自动重读。
 
 ### Command: `fetch_lyrics_online`
 

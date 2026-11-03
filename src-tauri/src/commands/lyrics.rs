@@ -835,6 +835,62 @@ mod tests {
     }
 
     #[test]
+    fn cached_embedded_lrc_produces_timed_payload() {
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("tests/fixtures/lyrics/ffmpeg-v4.mp3");
+        let raw = lyrics::fetch::read_embedded_lyrics(&path)
+            .expect("embedded lyrics should read")
+            .expect("embedded lyrics should exist");
+        let offset_ms = offset_ms_for_raw(&raw);
+        let payload = payload_from_cached_entry(
+            "embedded-song".to_owned(),
+            LyricsCacheEntry {
+                song_hash: "embedded-song".to_owned(),
+                lrc: raw.clone(),
+                source: LyricsSource::Embedded,
+                offset_ms,
+                fetched_at: 1,
+                word_timed_checked_at: None,
+            },
+        )
+        .expect("embedded payload should build");
+        assert_eq!(payload.source, Some(LyricsSource::Embedded));
+        assert_eq!(payload.raw_lrc, raw);
+        assert_eq!(payload.offset_ms, -250);
+        assert_eq!(
+            payload
+                .lines
+                .iter()
+                .map(|line| line.time_ms)
+                .collect::<Vec<_>>(),
+            [1230, 2345, 3000, 4000]
+        );
+        assert_eq!(payload.lines[0].text, "第一行");
+    }
+
+    #[test]
+    fn cached_embedded_plain_text_produces_untimed_payload() {
+        let raw = "plain lyrics\n第二行";
+        let payload = payload_from_cached_entry(
+            "embedded-song".to_owned(),
+            LyricsCacheEntry {
+                song_hash: "embedded-song".to_owned(),
+                lrc: raw.to_owned(),
+                source: LyricsSource::Embedded,
+                offset_ms: 0,
+                fetched_at: 1,
+                word_timed_checked_at: None,
+            },
+        )
+        .expect("plain text payload should build");
+        assert_eq!(payload.source, Some(LyricsSource::Embedded));
+        assert_eq!(payload.raw_lrc, raw);
+        assert_eq!(payload.lines.len(), 2);
+        assert!(payload.lines.iter().all(|line| line.time_ms == 0));
+        assert_eq!(payload.lines[1].text, "第二行");
+    }
+
+    #[test]
     fn payload_from_cached_entry_uses_persisted_ttml_offset() {
         let conn = test_db();
         insert_song(&conn, "song-ttml-offset");

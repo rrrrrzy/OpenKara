@@ -9,7 +9,10 @@ use crate::{
     metadata,
 };
 use anyhow::{Context, Result};
-use lofty::{file::TaggedFileExt, tag::ItemKey};
+use lofty::{
+    file::TaggedFileExt,
+    tag::{ItemKey, Tag},
+};
 use serde::Serialize;
 use std::{
     fs,
@@ -247,16 +250,15 @@ pub fn read_embedded_lyrics(path: &Path) -> Result<Option<String>> {
         )
     })?;
 
-    for tag in tagged_file.tags() {
-        if let Some(lyrics) = tag.get_string(ItemKey::Lyrics) {
-            let lyrics = lyrics.trim();
-            if !lyrics.is_empty() {
-                return Ok(Some(lyrics.to_owned()));
-            }
-        }
-    }
+    Ok(embedded_lyrics_text(tagged_file.tags()).map(str::to_owned))
+}
 
-    Ok(None)
+fn embedded_lyrics_text(tags: &[Tag]) -> Option<&str> {
+    [ItemKey::Lyrics, ItemKey::UnsyncLyrics]
+        .into_iter()
+        .flat_map(|key| tags.iter().flat_map(move |tag| tag.get_strings(key)))
+        .map(str::trim)
+        .find(|text| !text.is_empty())
 }
 
 fn read_sidecar_lyrics(path: &Path) -> Result<Option<(String, LyricsSource)>> {
@@ -352,6 +354,47 @@ fn has_timed_lines(raw_lrc: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use lofty::tag::{ItemValue, TagItem, TagType};
+
+    fn lyrics_tag(key: ItemKey, texts: &[&str]) -> Tag {
+        let mut tag = Tag::new(TagType::VorbisComments);
+        for text in texts {
+            assert!(tag.push(TagItem::new(key, ItemValue::Text((*text).to_owned()))));
+        }
+        tag
+    }
+
+    #[test]
+    fn embedded_lyrics_preserve_lyrics_key_priority_across_tags() {
+        let tags = [
+            lyrics_tag(ItemKey::UnsyncLyrics, &["[00:01.00]USLT"]),
+            lyrics_tag(ItemKey::Lyrics, &["[00:02.00]existing", "later"]),
+        ];
+        assert_eq!(embedded_lyrics_text(&tags), Some("[00:02.00]existing"));
+    }
+
+    #[test]
+    fn embedded_lyrics_skip_empty_candidates_and_keep_tag_order() {
+        for key in [ItemKey::Lyrics, ItemKey::UnsyncLyrics] {
+            let tags = [
+                lyrics_tag(key, &["", " \n\t "]),
+                lyrics_tag(key, &[" \n", "  first nonempty\n ", "later"]),
+                lyrics_tag(key, &["another tag"]),
+            ];
+            assert_eq!(embedded_lyrics_text(&tags), Some("first nonempty"));
+        }
+    }
+
+    #[test]
+    fn embedded_lyrics_fall_back_to_unsync_key_only_when_lyrics_are_empty() {
+        let tags = [
+            lyrics_tag(ItemKey::Lyrics, &[" ", "\n"]),
+            lyrics_tag(ItemKey::UnsyncLyrics, &["\t", " fallback "]),
+        ];
+        assert_eq!(embedded_lyrics_text(&tags), Some("fallback"));
+        assert_eq!(embedded_lyrics_text(&[]), None);
+        assert_eq!(embedded_lyrics_text(&tags[..1]), None);
+    }
 
     #[test]
     fn parse_lyrics_auto_detects_ttml_xml_prefix() {

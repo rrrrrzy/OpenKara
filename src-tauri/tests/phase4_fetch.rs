@@ -14,6 +14,7 @@ use openkara_lib::{
     library::Song,
     library_root::LibraryRoot,
     lyrics::{
+        acquisition::{LyricsAcquisition, LyricsAcquisitionResult},
         amll::AmllClient,
         fetch::{
             fetch_lyrics_for_song_local, fetch_online_timed_lyrics, lookup_query_from_song,
@@ -24,6 +25,209 @@ use openkara_lib::{
         lrclib::LrcLibClient,
     },
 };
+
+const EMBEDDED_LRC: &str = include_str!("fixtures/lyrics/embedded.lrc");
+
+fn lyrics_fixture_path(filename: &str) -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("tests/fixtures/lyrics")
+        .join(filename)
+}
+
+fn assert_embedded_lrc(raw: &str) {
+    assert_eq!(raw, EMBEDDED_LRC.trim());
+    let lines = parse_lyrics_auto(raw).expect("embedded LRC should parse");
+    assert_eq!(
+        lines.iter().map(|line| line.time_ms).collect::<Vec<_>>(),
+        [1230, 2345, 3000, 4000]
+    );
+    assert_eq!(
+        lines
+            .iter()
+            .map(|line| line.text.as_str())
+            .collect::<Vec<_>>(),
+        ["第一行", "第二行", "重复行", "重复行"]
+    );
+}
+
+fn synchsafe_size(size: usize) -> [u8; 4] {
+    [
+        ((size >> 21) & 0x7f) as u8,
+        ((size >> 14) & 0x7f) as u8,
+        ((size >> 7) & 0x7f) as u8,
+        (size & 0x7f) as u8,
+    ]
+}
+
+fn write_uslt_mp3(path: &Path, version: u8, texts: &[&str]) {
+    let original = fs::read(metadata_fixture_path("fixture.mp3")).expect("fixture should read");
+    assert_eq!(&original[..3], b"ID3");
+    let original_size = original[6..10]
+        .iter()
+        .fold(0usize, |size, byte| (size << 7) | usize::from(*byte));
+    let mut frames = Vec::new();
+    for (index, text) in texts.iter().enumerate() {
+        let description = format!("lyrics-{index}");
+        let mut body = vec![if version == 3 { 1 } else { 3 }, b'e', b'n', b'g'];
+        for value in [&description, *text] {
+            if version == 3 {
+                body.extend_from_slice(&[0xff, 0xfe]);
+                for unit in value.encode_utf16() {
+                    body.extend_from_slice(&unit.to_le_bytes());
+                }
+                body.extend_from_slice(&[0, 0]);
+            } else {
+                body.extend_from_slice(value.as_bytes());
+                body.push(0);
+            }
+        }
+        frames.extend_from_slice(b"USLT");
+        frames.extend_from_slice(&if version == 3 {
+            (body.len() as u32).to_be_bytes()
+        } else {
+            synchsafe_size(body.len())
+        });
+        frames.extend_from_slice(&[0, 0]);
+        frames.extend_from_slice(&body);
+    }
+    let mut output = vec![b'I', b'D', b'3', version, 0, 0];
+    output.extend_from_slice(&synchsafe_size(frames.len()));
+    output.extend_from_slice(&frames);
+    output.extend_from_slice(&original[10 + original_size..]);
+    fs::write(path, output).expect("USLT fixture should write");
+}
+
+#[test]
+fn reads_ffmpeg_embedded_lrc_in_id3v23_and_id3v24() {
+    for version in [3, 4] {
+        let path = lyrics_fixture_path(&format!("ffmpeg-v{version}.mp3"));
+        let bytes = fs::read(&path).expect("FFmpeg fixture should read");
+        assert_eq!(bytes[3], version);
+        assert_eq!(&bytes[10..14], b"TXXX");
+        let raw = read_embedded_lyrics(&path)
+            .expect("FFmpeg lyrics should read")
+            .expect("FFmpeg lyrics should exist");
+        assert_embedded_lrc(&raw);
+    }
+}
+
+#[test]
+fn reads_true_uslt_with_utf16_and_utf8_and_skips_empty_frames() {
+    let dir = unique_fixture_dir();
+    fs::create_dir_all(&dir).expect("fixture directory should create");
+    for version in [3, 4] {
+        let path = dir.join(format!("uslt-v{version}.mp3"));
+        write_uslt_mp3(&path, version, &[" \n ", EMBEDDED_LRC, "[00:09.00]later"]);
+        let raw = read_embedded_lyrics(&path)
+            .expect("USLT should read")
+            .expect("nonempty USLT should exist");
+        assert_embedded_lrc(&raw);
+    }
+    cleanup_dir(&dir);
+}
+
+#[test]
+fn embedded_text_precedes_sidecar_and_empty_text_falls_back() {
+    let dir = unique_fixture_dir();
+    fs::create_dir_all(&dir).expect("fixture directory should create");
+    let path = dir.join("song.mp3");
+    fs::write(path.with_extension("lrc"), "[00:10.00]sidecar").expect("sidecar should write");
+    for (embedded, expected_source, expected_raw) in [
+        (
+            "  plain lyrics\n第二行  ",
+            LyricsSource::Embedded,
+            "plain lyrics\n第二行",
+        ),
+        (EMBEDDED_LRC, LyricsSource::Embedded, EMBEDDED_LRC.trim()),
+        (" \n ", LyricsSource::Sidecar, "[00:10.00]sidecar"),
+    ] {
+        write_uslt_mp3(&path, 4, &[embedded]);
+        let fetched = fetch_lyrics_for_song_local(&fixture_song(&path), &path)
+            .expect("local lyrics should read")
+            .expect("local lyrics should exist");
+        assert_eq!(fetched.source, expected_source);
+        assert_eq!(fetched.raw_lrc, expected_raw);
+    }
+    assert_eq!(
+        read_embedded_lyrics(&path).expect("empty tag should read"),
+        None
+    );
+    assert_eq!(
+        read_embedded_lyrics(&metadata_fixture_path("fixture.mp3"))
+            .expect("untagged lyrics should read"),
+        None
+    );
+    cleanup_dir(&dir);
+}
+
+#[test]
+fn acquisition_caches_ffmpeg_lrc_and_preserves_existing_cache() {
+    let dir = unique_fixture_dir();
+    let library = LibraryRoot::create(&dir).expect("library should create");
+    let path = library.resolve("media/song.mp3");
+    fs::copy(lyrics_fixture_path("ffmpeg-v4.mp3"), &path).expect("FFmpeg fixture should copy");
+    fs::write(path.with_extension("lrc"), "[00:10.00]sidecar").expect("sidecar should write");
+    let connection =
+        rusqlite::Connection::open(library.database_path()).expect("database should open");
+    cache::apply_migrations(&connection).expect("migrations should apply");
+    let mut song = fixture_song(&path);
+    song.file_path = Some("media/song.mp3".to_owned());
+    cache::upsert_song(&connection, &song).expect("song should insert");
+
+    let mut server = mockito::Server::new();
+    let online = server.mock("GET", mockito::Matcher::Any).expect(0).create();
+    let amll = AmllClient::new(server.url());
+    let lrclib = LrcLibClient::new(server.url());
+    let lrcapi = LrcApiClient::new(server.url());
+    let acquisition = LyricsAcquisition::new(&amll, &lrclib, &lrcapi);
+    let result = acquisition
+        .acquire(&connection, &library, &song.hash)
+        .expect("acquisition should succeed");
+    assert!(matches!(result, LyricsAcquisitionResult::Fetched(_)));
+    let persisted = LyricsAcquisition::persist_acquisition(&connection, &song.hash, &result)
+        .expect("lyrics should persist");
+    assert!(persisted.changed);
+    let mut cached = cache::lyrics::get_lyrics_cache_entry(&connection, &song.hash)
+        .expect("cache should read")
+        .expect("cache should exist");
+    assert_eq!(cached.source, LyricsSource::Embedded);
+    assert_eq!(cached.offset_ms, -250);
+    assert_embedded_lrc(&cached.lrc);
+
+    fs::remove_file(&path).expect("audio should remove to prove cache prevents file reads");
+    let result = acquisition
+        .acquire(&connection, &library, &song.hash)
+        .expect("cached lyrics should load");
+    let LyricsAcquisitionResult::Cached(entry) = result else {
+        panic!("embedded cache should win");
+    };
+    assert_embedded_lrc(&entry.lrc);
+    assert_eq!(entry.offset_ms, -250);
+
+    for source in [LyricsSource::LrcLib, LyricsSource::Absent] {
+        cached.source = source.clone();
+        cached.lrc = if source == LyricsSource::Absent {
+            String::new()
+        } else {
+            "[00:08.00]cached online".to_owned()
+        };
+        cache::lyrics::upsert_lyrics_cache_entry(&connection, &cached)
+            .expect("cache should update");
+        let result = acquisition
+            .acquire(&connection, &library, &song.hash)
+            .expect("existing cache should win");
+        match result {
+            LyricsAcquisitionResult::Cached(entry) => {
+                assert_eq!(entry.source, LyricsSource::LrcLib);
+                assert_eq!(entry.lrc, cached.lrc);
+            }
+            LyricsAcquisitionResult::NegativeCacheHit => assert_eq!(source, LyricsSource::Absent),
+            other => panic!("expected cache hit, got {other:?}"),
+        }
+    }
+    online.assert();
+    cleanup_dir(&dir);
+}
 
 fn metadata_fixture_path(filename: &str) -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
