@@ -23,6 +23,13 @@
 14. `add_songs_to_playlist(playlist_id: String, song_hashes: Vec<String>) -> ()` — 向播放列表添加歌曲
 15. `remove_songs_from_playlist(playlist_id: String, song_hashes: Vec<String>) -> ()` — 从播放列表移除歌曲
 16. `get_playlist_songs(playlist_id: String) -> Vec<PlaylistSong>` — 返回播放列表内歌曲
+
+`reorder_playlist_songs(playlist_id: String, song_hashes: Vec<String>) -> ()`
+保存完整的歌曲排列。输入必须与当前成员完全一致且没有重复；空播放列表接受空数组。
+不存在的播放列表和无效排列返回结构化 `database_unavailable` 错误。
+事务原子更新 `sort_order` 和播放列表 `updated_at`，保留 `added_at` 与 `singer`。
+读取歌曲按保存顺序返回。Tauri 参数使用 `playlistId` 和 `songHashes`。
+
 17. `set_rotation_state(rotation: RotationState) -> ()` — 设置轮唱状态
 18. `get_rotation_state() -> RotationState` — 读取当前轮唱状态
 19. `advance_rotation() -> RotationState` — 推进轮唱指针

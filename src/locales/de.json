@@ -833,7 +833,19 @@
     "removedFromPlaylistToast": "{{count}} Song(s) aus der Playlist entfernt.",
     "section": "PLAYLISTS",
     "newPlaylist": "[+] Neue Playlist…",
-    "removeFromPlaylist": "Aus Playlist entfernen"
+    "removeFromPlaylist": "Aus Playlist entfernen",
+    "replaceQueue": "Warteschlange ersetzen",
+    "queueReplaced": "{{count}} Titel eingereiht",
+    "queueSkipped": "{{count}} fehlende Titel übersprungen.",
+    "queueReplaceFailed": "Die Warteschlange konnte nicht ersetzt werden. Sie bleibt unverändert. Erneut versuchen.",
+    "reorder": "{{title}} verschieben",
+    "moveUp": "Nach oben",
+    "moveDown": "Nach unten",
+    "reorderFailed": "Reihenfolge konnte nicht gespeichert werden. Die ursprüngliche Reihenfolge wurde wiederhergestellt. Erneut versuchen.",
+    "dragInstructions": "Leertaste zum Aufnehmen, Pfeiltasten zum Verschieben, Leertaste zum Ablegen oder Escape zum Abbrechen.",
+    "dragStarted": "Titel aufgenommen.",
+    "dragPosition": "Titel an Position {{position}}.",
+    "dragCancelled": "Verschieben abgebrochen."
   },
   "rotation": {
     "assignSinger": "Sänger zuweisen",

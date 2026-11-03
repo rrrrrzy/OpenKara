@@ -833,7 +833,19 @@
     "removedFromPlaylistToast": "นำ {{count}} เพลงออกจากเพลย์ลิสต์แล้ว",
     "section": "เพลย์ลิสต์",
     "newPlaylist": "[+] เพลย์ลิสต์ใหม่…",
-    "removeFromPlaylist": "นำออกจากเพลย์ลิสต์"
+    "removeFromPlaylist": "นำออกจากเพลย์ลิสต์",
+    "replaceQueue": "แทนที่คิวที่รอเล่น",
+    "queueReplaced": "เพิ่ม {{count}} เพลงลงในคิวแล้ว",
+    "queueSkipped": "ข้าม {{count}} เพลงที่ไม่มีในคลังแล้ว",
+    "queueReplaceFailed": "แทนที่คิวไม่ได้ คิวเดิมยังคงอยู่ โปรดลองอีกครั้ง",
+    "reorder": "จัดลำดับ {{title}}",
+    "moveUp": "เลื่อนขึ้น",
+    "moveDown": "เลื่อนลง",
+    "reorderFailed": "บันทึกลำดับไม่ได้ คืนค่าลำดับเดิมแล้ว โปรดลองอีกครั้ง",
+    "dragInstructions": "กด Space เพื่อเลือกเพลง ใช้ปุ่มลูกศรเพื่อย้าย กด Space เพื่อวาง หรือ Escape เพื่อยกเลิก",
+    "dragStarted": "เลือกเพลงแล้ว",
+    "dragPosition": "เพลงอยู่ในลำดับที่ {{position}}",
+    "dragCancelled": "ยกเลิกการจัดลำดับแล้ว"
   },
   "rotation": {
     "assignSinger": "กำหนดนักร้อง",

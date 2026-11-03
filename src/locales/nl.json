@@ -833,7 +833,19 @@
     "removedFromPlaylistToast": "{{count}} nummer(s) uit afspeellijst verwijderd.",
     "section": "AFSPEELLIJSTEN",
     "newPlaylist": "[+] Nieuwe afspeellijst…",
-    "removeFromPlaylist": "Uit afspeellijst verwijderen"
+    "removeFromPlaylist": "Uit afspeellijst verwijderen",
+    "replaceQueue": "Wachtrij vervangen",
+    "queueReplaced": "{{count}} nummers in de wachtrij",
+    "queueSkipped": "{{count}} ontbrekende nummers overgeslagen.",
+    "queueReplaceFailed": "Kan de wachtrij niet vervangen. De wachtrij is ongewijzigd. Probeer opnieuw.",
+    "reorder": "{{title}} verplaatsen",
+    "moveUp": "Omhoog",
+    "moveDown": "Omlaag",
+    "reorderFailed": "Kan de volgorde niet opslaan. De oorspronkelijke volgorde is hersteld. Probeer opnieuw.",
+    "dragInstructions": "Druk op Spatie om op te pakken, pijltjes om te verplaatsen, Spatie om neer te zetten of Escape om te annuleren.",
+    "dragStarted": "Nummer opgepakt.",
+    "dragPosition": "Nummer op positie {{position}}.",
+    "dragCancelled": "Verplaatsen geannuleerd."
   },
   "rotation": {
     "assignSinger": "Zanger toewijzen",

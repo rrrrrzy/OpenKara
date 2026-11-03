@@ -615,3 +615,75 @@ fn add_songs_batch_appends_after_existing() {
 
     assert_eq!(orders, vec![0, 1, 2, 3, 4]);
 }
+
+#[test]
+fn reorder_preserves_metadata_and_rejects_invalid_permutations() {
+    use openkara_lib::library::playlist;
+    let mut conn = setup_db();
+    insert_playlist(&conn, "order", "Order");
+    for hash in ["a", "b", "c"] {
+        insert_song(&conn, hash);
+    }
+    let original: Vec<String> = ["a", "b", "c"].into_iter().map(String::from).collect();
+    playlist::add_songs_to_playlist(&mut conn, "order", &original).unwrap();
+    playlist::set_queue_entry_singer(&conn, "order", "b", Some("Alice")).unwrap();
+    let before = playlist::get_playlist_songs(&conn, "order").unwrap();
+    let reversed: Vec<String> = ["c", "b", "a"].into_iter().map(String::from).collect();
+    playlist::reorder_playlist_songs(&mut conn, "order", &reversed).unwrap();
+    let after = playlist::get_playlist_songs(&conn, "order").unwrap();
+    assert_eq!(
+        after
+            .iter()
+            .map(|s| s.song_hash.clone())
+            .collect::<Vec<_>>(),
+        reversed
+    );
+    for (index, entry) in after.iter().enumerate() {
+        let old = before
+            .iter()
+            .find(|old| old.song_hash == entry.song_hash)
+            .unwrap();
+        assert_eq!(entry.added_at, old.added_at);
+        assert_eq!(entry.singer, old.singer);
+        assert_eq!(entry.sort_order, index as i64);
+    }
+    for invalid in [
+        vec!["a", "a", "b"],
+        vec!["a", "b"],
+        vec!["a", "b", "missing"],
+        vec!["a", "b", "c", "extra"],
+    ] {
+        let hashes = invalid.into_iter().map(String::from).collect::<Vec<_>>();
+        assert!(playlist::reorder_playlist_songs(&mut conn, "order", &hashes).is_err());
+        assert_eq!(
+            playlist::get_playlist_songs(&conn, "order")
+                .unwrap()
+                .iter()
+                .map(|s| s.song_hash.clone())
+                .collect::<Vec<_>>(),
+            reversed
+        );
+    }
+    insert_playlist(&conn, "empty", "Empty");
+    playlist::reorder_playlist_songs(&mut conn, "empty", &[]).unwrap();
+    assert!(playlist::reorder_playlist_songs(&mut conn, "missing", &[]).is_err());
+}
+
+#[test]
+fn reorder_rolls_back_when_a_later_update_fails() {
+    use openkara_lib::library::playlist;
+    let mut conn = setup_db();
+    insert_playlist(&conn, "order", "Order");
+    for hash in ["a", "b"] {
+        insert_song(&conn, hash);
+    }
+    playlist::add_songs_to_playlist(&mut conn, "order", &["a".into(), "b".into()]).unwrap();
+    conn.execute_batch("CREATE TRIGGER reject_reorder BEFORE UPDATE OF sort_order ON playlist_songs WHEN NEW.song_hash = 'a' BEGIN SELECT RAISE(ABORT, 'test failure'); END;").unwrap();
+    assert!(
+        playlist::reorder_playlist_songs(&mut conn, "order", &["b".into(), "a".into()]).is_err()
+    );
+    let songs = playlist::get_playlist_songs(&conn, "order").unwrap();
+    assert_eq!(songs[0].song_hash, "a");
+    assert_eq!(songs[0].sort_order, 0);
+    assert_eq!(songs[1].sort_order, 1);
+}

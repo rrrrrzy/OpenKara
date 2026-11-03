@@ -37,6 +37,21 @@
 | **Delete**   | Context menu "Delete" (⋮)              | Confirm dialog: "Delete 'Playlist Name'? Songs will not be removed from your library." |
 | **Add song** | Library context menu "Add to Playlist" | Submenu listing all playlists with checkmark next to ones containing the song.         |
 
+### Song order and queue replacement
+
+Local Playlists support a drag handle, keyboard drag, and single-song Move Up
+and Move Down menu actions. The app saves the order automatically. A failed
+save restores the prior order and shows an error. Playlist order does not
+follow the Library sort setting.
+
+Replace Upcoming Queue replaces the pending Queue with the saved Playlist
+order in one update. It does not start or interrupt playback. It preserves
+play history and singer rotation. The current song can also appear in the
+replacement Queue. An empty Playlist disables the action. A failed read keeps
+the Queue unchanged. Missing Library songs are skipped with a count; if no
+songs remain, the Queue stays unchanged. Remote Streaming Playlists are outside
+this flow until imported into a local Playlist.
+
 ### Singer assignment (rotation)
 
 You can assign a singer from:

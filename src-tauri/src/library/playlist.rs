@@ -162,6 +162,52 @@ pub fn remove_songs_from_playlist(
     Ok(())
 }
 
+pub fn reorder_playlist_songs(
+    conn: &mut Connection,
+    playlist_id: &str,
+    song_hashes: &[String],
+) -> CommandResult<()> {
+    let tx = conn
+        .transaction_with_behavior(TransactionBehavior::Immediate)
+        .map_err(database_error)?;
+    let exists: bool = tx
+        .query_row(
+            "SELECT EXISTS(SELECT 1 FROM playlists WHERE id = ?1)",
+            [playlist_id],
+            |row| row.get(0),
+        )
+        .map_err(database_error)?;
+    if !exists {
+        return Err(database_error(format!("playlist {playlist_id} not found")));
+    }
+    let current = get_playlist_songs(&tx, playlist_id)?;
+    let requested: std::collections::HashSet<&str> =
+        song_hashes.iter().map(String::as_str).collect();
+    if requested.len() != song_hashes.len()
+        || current.len() != song_hashes.len()
+        || current
+            .iter()
+            .any(|entry| !requested.contains(entry.song_hash.as_str()))
+    {
+        return Err(database_error(
+            "Playlist order must contain each current song exactly once",
+        ));
+    }
+    for (index, hash) in song_hashes.iter().enumerate() {
+        tx.execute(
+            "UPDATE playlist_songs SET sort_order = ?1 WHERE playlist_id = ?2 AND song_hash = ?3",
+            rusqlite::params![index as i64, playlist_id, hash],
+        )
+        .map_err(database_error)?;
+    }
+    tx.execute(
+        "UPDATE playlists SET updated_at = ?1 WHERE id = ?2",
+        rusqlite::params![now(), playlist_id],
+    )
+    .map_err(database_error)?;
+    tx.commit().map_err(database_error)
+}
+
 pub fn get_playlist_songs(
     conn: &Connection,
     playlist_id: &str,

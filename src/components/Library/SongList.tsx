@@ -1,4 +1,27 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  DndContext,
+  DragOverlay,
+  PointerSensor,
+  KeyboardSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  sortableKeyboardCoordinates,
+  arrayMove,
+} from "@dnd-kit/sortable";
+import { createPortal } from "react-dom";
+import { useTranslation } from "react-i18next";
+import { notifyError, notifySuccess } from "@/lib/errors";
+import { useQueueStore } from "@/stores/queue-store";
+import { songDisplayTitle } from "@/lib/song-display";
+import { getDropIndicatorPosition } from "@/components/Player/queue-dnd";
+import { SortablePlaylistSong } from "./SortablePlaylistSong";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { SongListItem } from "./SongListItem";
 import { EmptyLibrary } from "./EmptyLibrary";
@@ -9,7 +32,6 @@ import { usePlaylistStore } from "@/stores/playlist-store";
 import { useSettingsStore } from "@/stores/settings-store";
 import { sortSongs } from "@/lib/song-sort";
 import { buildAlphabetIndex } from "@/lib/alphabet-index";
-import type { Song } from "@/types/ipc";
 
 const SONG_ROW_ESTIMATE_PX = 68;
 const SONG_ROW_GAP_PX = 4;
@@ -48,38 +70,40 @@ export function SongList({ previewMode = false }: SongListProps = {}) {
     (s) => s.clearRangeSelectionAnchor,
   );
   const activePlaylistId = usePlaylistStore((s) => s.activePlaylistId);
-  const getPlaylistSongs = usePlaylistStore((s) => s.getPlaylistSongs);
+  const { t } = useTranslation();
+  const activeSongs = usePlaylistStore((s) => s.activeSongs);
+  const loadActiveSongs = usePlaylistStore((s) => s.loadActiveSongs);
+  const reorderPlaylistSongs = usePlaylistStore((s) => s.reorderPlaylistSongs);
+  const replacePlaylistQueue = usePlaylistStore((s) => s.replacePlaylistQueue);
+  const songsLoading = usePlaylistStore((s) => s.songsLoading);
+  const isSavingOrder = usePlaylistStore((s) => s.isSavingOrder);
+  const isReplacingQueue = usePlaylistStore((s) => s.isReplacingQueue);
+  const busy = songsLoading || isSavingOrder || isReplacingQueue;
+  const [draggedId, setDraggedId] = useState<string | null>(null);
+  const [overId, setOverId] = useState<string | null>(null);
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
+  );
   const playlistSongSets = usePlaylistStore((s) => s.playlistSongSets);
   const librarySortMode = useSettingsStore((s) => s.librarySortMode);
-  const [playlistSongs, setPlaylistSongs] = useState<Song[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  const loadPlaylistSongsFromLibrary = useCallback(
-    async (playlistId: string, librarySongs: Song[]): Promise<Song[]> => {
-      const playlistSongEntries = await getPlaylistSongs(playlistId);
-      const libraryByHash = new Map(librarySongs.map((s) => [s.hash, s]));
-      return playlistSongEntries
-        .map((entry) => libraryByHash.get(entry.song_hash))
-        .filter((song): song is Song => song != null);
-    },
-    [getPlaylistSongs],
-  );
-
   useEffect(() => {
-    if (activePlaylistId) {
-      let cancelled = false;
-      void loadPlaylistSongsFromLibrary(activePlaylistId, songs).then(
-        (result) => {
-          if (!cancelled) {
-            setPlaylistSongs(result);
-          }
-        },
-      );
-      return () => {
-        cancelled = true;
-      };
-    }
-  }, [activePlaylistId, songs, loadPlaylistSongsFromLibrary, playlistSongSets]);
+    if (activePlaylistId) void loadActiveSongs().catch(notifyError);
+    setDraggedId(null);
+    setOverId(null);
+  }, [activePlaylistId, loadActiveSongs, playlistSongSets]);
+
+  const playlistSongs = useMemo(() => {
+    const byHash = new Map(songs.map((song) => [song.hash, song]));
+    return (activeSongs ?? []).flatMap((entry) => {
+      const song = byHash.get(entry.song_hash);
+      return song ? [song] : [];
+    });
+  }, [activeSongs, songs]);
 
   const separatedSongs = useMemo(
     () =>
@@ -108,10 +132,12 @@ export function SongList({ previewMode = false }: SongListProps = {}) {
 
   const virtualizer = useVirtualizer({
     count: displaySongs.length,
+    getItemKey: (index) => displaySongs[index].hash,
     getScrollElement: () => scrollRef.current,
     estimateSize: () => SONG_ROW_ESTIMATE_PX,
     gap: SONG_ROW_GAP_PX,
     overscan: 8,
+    useAnimationFrameWithResizeObserver: !!activePlaylistId,
     measureElement: resolveSongListMeasureElement(
       typeof window !== "undefined",
       typeof navigator !== "undefined" ? navigator.userAgent : "",
@@ -153,44 +179,206 @@ export function SongList({ previewMode = false }: SongListProps = {}) {
     virtualizer,
   ]);
 
-  if (displaySongs.length === 0) {
-    return <EmptyLibrary />;
-  }
+  const moveSong = (
+    hash: string,
+    targetHash: string,
+    focusTarget: "handle" | "song" = "handle",
+  ) => {
+    if (busy || !activePlaylistId) return;
+    const hashes = activeSongs.map((entry) => entry.song_hash);
+    const from = hashes.indexOf(hash);
+    const to = hashes.indexOf(targetHash);
+    if (from < 0 || to < 0 || from === to) return;
+    clearRangeSelectionAnchor();
+    const playlistId = activePlaylistId;
+    void reorderPlaylistSongs(arrayMove(hashes, from, to))
+      .catch(() => notifyError(new Error(t("playlist.reorderFailed"))))
+      .finally(() => {
+        const state = usePlaylistStore.getState();
+        if (state.activePlaylistId !== playlistId) return;
+        const index = displaySongs.findIndex(
+          (song) => song.hash === targetHash,
+        );
+        virtualizer.scrollToIndex(index, { align: "auto" });
+        requestAnimationFrame(() => {
+          const selector =
+            focusTarget === "handle"
+              ? `[data-playlist-drag-hash="${CSS.escape(hash)}"]`
+              : `[data-song-hash="${CSS.escape(hash)}"] [data-song-action="select"]`;
+          scrollRef.current?.querySelector<HTMLElement>(selector)?.focus();
+        });
+      });
+  };
+  const endDrag = ({ active, over }: DragEndEvent) => {
+    if (over) moveSong(String(active.id), String(over.id));
+    setDraggedId(null);
+    setOverId(null);
+  };
+  const replaceQueue = async () => {
+    try {
+      const result = await replacePlaylistQueue((hashes) =>
+        useQueueStore.getState().setQueue(hashes),
+      );
+      if (result)
+        notifySuccess(
+          t("playlist.queueReplaced", { count: result.count }),
+          result.skipped
+            ? t("playlist.queueSkipped", { count: result.skipped })
+            : "",
+        );
+    } catch {
+      notifyError(new Error(t("playlist.queueReplaceFailed")));
+    }
+  };
+
+  if (displaySongs.length === 0 && !activePlaylistId) return <EmptyLibrary />;
 
   return (
-    <div className="relative min-h-0 flex-1">
-      <div
-        ref={scrollRef}
-        className="h-full overflow-y-auto"
-        data-testid="song-list"
-        data-song-list-visual-variant="unified"
-        data-preview-song-list="true"
-        style={showRail ? { paddingRight: "24px" } : undefined}
-      >
-        <div
-          className="relative w-full"
-          style={{ height: `${virtualizer.getTotalSize()}px` }}
+    <div className="relative flex min-h-0 flex-1 flex-col">
+      {activePlaylistId && (
+        <button
+          className="mx-2 mb-2 rounded px-2 py-1 text-sm text-[var(--color-text)] hover:bg-[var(--color-hover)] focus-visible:outline-2 focus-visible:outline-[var(--color-accent)] disabled:opacity-40"
+          disabled={busy || (activeSongs?.length ?? 0) === 0}
+          onClick={() => void replaceQueue()}
         >
-          {virtualizer.getVirtualItems().map((virtualRow) => {
-            const song = displaySongs[virtualRow.index];
-            return (
-              <div
-                key={song.hash}
-                data-index={virtualRow.index}
-                ref={virtualizer.measureElement}
-                className="absolute left-0 top-0 w-full"
-                style={{ transform: `translateY(${virtualRow.start}px)` }}
-              >
-                <SongListItem
-                  song={song}
-                  orderedHashes={orderedHashes}
-                  previewMode={previewMode}
-                />
-              </div>
-            );
-          })}
-        </div>
-      </div>
+          {t("playlist.replaceQueue")}
+        </button>
+      )}
+      {activePlaylistId && displaySongs.length === 0 && (
+        <p role="status" className="p-3 text-sm text-[var(--color-text-dim)]">
+          {songsLoading ? t("common.loading") : t("playlist.empty")}
+        </p>
+      )}
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragStart={({ active }) => setDraggedId(String(active.id))}
+        onDragOver={({ over }) => setOverId(over ? String(over.id) : null)}
+        onDragEnd={endDrag}
+        onDragCancel={() => {
+          setDraggedId(null);
+          setOverId(null);
+        }}
+        accessibility={{
+          screenReaderInstructions: {
+            draggable: t("playlist.dragInstructions"),
+          },
+          announcements: {
+            onDragStart: () => t("playlist.dragStarted"),
+            onDragOver: ({ over }) =>
+              over
+                ? t("playlist.dragPosition", {
+                    position: orderedHashes.indexOf(String(over.id)) + 1,
+                  })
+                : undefined,
+            onDragEnd: ({ over }) =>
+              over
+                ? t("playlist.dragPosition", {
+                    position: orderedHashes.indexOf(String(over.id)) + 1,
+                  })
+                : t("playlist.dragCancelled"),
+            onDragCancel: () => t("playlist.dragCancelled"),
+          },
+        }}
+      >
+        <SortableContext
+          items={activePlaylistId ? orderedHashes : []}
+          strategy={verticalListSortingStrategy}
+        >
+          <div
+            ref={scrollRef}
+            className="min-h-0 flex-1 overflow-y-auto"
+            data-testid="song-list"
+            data-song-list-visual-variant="unified"
+            data-preview-song-list="true"
+            style={showRail ? { paddingRight: "24px" } : undefined}
+          >
+            <div
+              className="relative w-full"
+              style={{ height: `${virtualizer.getTotalSize()}px` }}
+            >
+              {virtualizer.getVirtualItems().map((virtualRow) => {
+                const song = displaySongs[virtualRow.index];
+                return (
+                  <div
+                    key={song.hash}
+                    data-index={virtualRow.index}
+                    ref={virtualizer.measureElement}
+                    className="absolute left-0 top-0 w-full"
+                    style={{ transform: `translateY(${virtualRow.start}px)` }}
+                  >
+                    {activePlaylistId ? (
+                      <SortablePlaylistSong
+                        id={song.hash}
+                        title={songDisplayTitle(song)}
+                        disabled={!!busy}
+                        dropIndicator={
+                          overId === song.hash
+                            ? getDropIndicatorPosition(
+                                orderedHashes.indexOf(draggedId ?? ""),
+                                orderedHashes.indexOf(overId ?? ""),
+                              )
+                            : null
+                        }
+                      >
+                        <SongListItem
+                          song={song}
+                          orderedHashes={orderedHashes}
+                          previewMode={previewMode}
+                          reorderMenuItems={[
+                            {
+                              label: t("playlist.moveUp"),
+                              disabled: !!busy || virtualRow.index === 0,
+                              onClick: () =>
+                                moveSong(
+                                  song.hash,
+                                  orderedHashes[virtualRow.index - 1],
+                                  "song",
+                                ),
+                            },
+                            {
+                              label: t("playlist.moveDown"),
+                              disabled:
+                                !!busy ||
+                                virtualRow.index === displaySongs.length - 1,
+                              onClick: () =>
+                                moveSong(
+                                  song.hash,
+                                  orderedHashes[virtualRow.index + 1],
+                                  "song",
+                                ),
+                            },
+                          ]}
+                        />
+                      </SortablePlaylistSong>
+                    ) : (
+                      <SongListItem
+                        song={song}
+                        orderedHashes={orderedHashes}
+                        previewMode={previewMode}
+                      />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </SortableContext>
+        {typeof document !== "undefined" && draggedId
+          ? createPortal(
+              <DragOverlay dropAnimation={null}>
+                {draggedId ? (
+                  <div className="rounded bg-[var(--color-surface)] p-3 text-[var(--color-text)] shadow-lg">
+                    {songDisplayTitle(
+                      displaySongs.find((song) => song.hash === draggedId),
+                    )}
+                  </div>
+                ) : null}
+              </DragOverlay>,
+              document.body,
+            )
+          : null}
+      </DndContext>
       {showRail && indexByBucket && (
         <AlphabetRail
           indexByBucket={indexByBucket}

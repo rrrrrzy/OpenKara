@@ -833,7 +833,19 @@
     "removedFromPlaylistToast": "재생목록에서 노래 {{count}}곡을 제거했어요.",
     "section": "재생목록",
     "newPlaylist": "[+] 새 재생목록…",
-    "removeFromPlaylist": "재생목록에서 제거"
+    "removeFromPlaylist": "재생목록에서 제거",
+    "replaceQueue": "대기 중인 큐 교체",
+    "queueReplaced": "{{count}}곡을 큐에 추가했습니다",
+    "queueSkipped": "라이브러리에 없는 {{count}}곡을 건너뛰었습니다.",
+    "queueReplaceFailed": "큐를 교체하지 못했습니다. 기존 큐는 유지됩니다. 다시 시도하세요.",
+    "reorder": "{{title}} 순서 변경",
+    "moveUp": "위로 이동",
+    "moveDown": "아래로 이동",
+    "reorderFailed": "순서를 저장하지 못했습니다. 원래 순서로 복원했습니다. 다시 시도하세요.",
+    "dragInstructions": "스페이스로 곡을 선택하고 방향키로 이동한 후 스페이스로 놓거나 Escape로 취소하세요.",
+    "dragStarted": "곡을 선택했습니다.",
+    "dragPosition": "곡이 {{position}}번째에 있습니다.",
+    "dragCancelled": "순서 변경을 취소했습니다."
   },
   "rotation": {
     "assignSinger": "가수 지정",

@@ -60,6 +60,16 @@ pub fn remove_songs_from_playlist(
 }
 
 #[tauri::command]
+pub fn reorder_playlist_songs(
+    state: State<'_, AppState>,
+    playlist_id: String,
+    song_hashes: Vec<String>,
+) -> CommandResult<()> {
+    let mut conn = get_connection(&state)?;
+    playlist::reorder_playlist_songs(&mut conn, &playlist_id, &song_hashes)
+}
+
+#[tauri::command]
 pub fn get_playlist_songs(
     state: State<'_, AppState>,
     playlist_id: String,

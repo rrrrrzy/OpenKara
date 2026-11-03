@@ -833,7 +833,19 @@
     "removedFromPlaylistToast": "{{count}} 曲をプレイリストから削除しました。",
     "section": "プレイリスト",
     "newPlaylist": "[+] 新しいプレイリスト…",
-    "removeFromPlaylist": "プレイリストから削除"
+    "removeFromPlaylist": "プレイリストから削除",
+    "replaceQueue": "待機中のキューを置き換え",
+    "queueReplaced": "{{count}} 曲をキューに追加しました",
+    "queueSkipped": "ライブラリにない {{count}} 曲をスキップしました。",
+    "queueReplaceFailed": "キューを置き換えられませんでした。元のキューは保持されています。再試行してください。",
+    "reorder": "{{title}} の順序を変更",
+    "moveUp": "上へ移動",
+    "moveDown": "下へ移動",
+    "reorderFailed": "順序を保存できませんでした。元の順序に戻しました。再試行してください。",
+    "dragInstructions": "スペースで曲を選び、矢印キーで移動し、スペースで確定、Escape でキャンセルします。",
+    "dragStarted": "曲を選択しました。",
+    "dragPosition": "曲の位置は {{position}} 番目です。",
+    "dragCancelled": "順序の変更をキャンセルしました。"
   },
   "rotation": {
     "assignSinger": "シンガーを割り当て",

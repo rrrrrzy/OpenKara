@@ -24,6 +24,9 @@ export function createPlaylistCommands(invoke: InvokeCommand): PlaylistBackend {
     removeSongsFromPlaylist: (playlistId, songHashes) =>
       invoke<void>("remove_songs_from_playlist", { playlistId, songHashes }),
 
+    reorderPlaylistSongs: (playlistId, songHashes) =>
+      invoke<void>("reorder_playlist_songs", { playlistId, songHashes }),
+
     getPlaylistSongs: (playlistId) =>
       invoke<PlaylistSong[]>("get_playlist_songs", { playlistId }),
 

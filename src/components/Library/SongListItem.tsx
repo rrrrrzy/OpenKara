@@ -24,22 +24,26 @@ import { InputDialog } from "../Settings/InputDialog";
 import { SongEditDialog } from "./SongEditDialog";
 import { SongPropertiesDialog } from "./SongPropertiesDialog";
 import { songDisplayTitle } from "@/lib/song-display";
+import type { ContextMenuItem } from "./ContextMenu";
 import type { RevealTargets, Song } from "@/types/ipc";
 
 interface SongListItemProps {
   song: Song;
   orderedHashes: string[];
   previewMode?: boolean;
+  reorderMenuItems?: ContextMenuItem[];
 }
 
 export function SongListItem({
   song,
   orderedHashes,
   previewMode = false,
+  reorderMenuItems = [],
 }: SongListItemProps) {
   const backend = useBackend();
   const { t } = useTranslation();
   const isSelected = useLibraryStore((s) => s.selectedSongIds.has(song.hash));
+  const selectedCount = useLibraryStore((s) => s.selectedSongIds.size);
   const selectSong = useLibraryStore((s) => s.selectSong);
   const separationStatus = useLibraryStore(
     (s) => s.separationStatuses[song.hash],
@@ -218,7 +222,10 @@ export function SongListItem({
       );
     }
     void showNativeContextMenu(
-      songCommands.buildMenu(commandContext),
+      [
+        ...songCommands.buildMenu(commandContext),
+        ...(!isSelected || selectedCount <= 1 ? reorderMenuItems : []),
+      ],
       clientX,
       clientY,
     );

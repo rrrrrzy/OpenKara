@@ -833,7 +833,19 @@
     "removedFromPlaylistToast": "Menghapus {{count}} lagu dari daftar putar.",
     "section": "DAFTAR PUTAR",
     "newPlaylist": "[+] Daftar Putar Baru…",
-    "removeFromPlaylist": "Hapus dari Daftar Putar"
+    "removeFromPlaylist": "Hapus dari Daftar Putar",
+    "replaceQueue": "Ganti antrean berikutnya",
+    "queueReplaced": "{{count}} lagu masuk antrean",
+    "queueSkipped": "{{count}} lagu yang tidak ada di pustaka dilewati.",
+    "queueReplaceFailed": "Tidak dapat mengganti antrean. Antrean tidak berubah. Coba lagi.",
+    "reorder": "Ubah urutan {{title}}",
+    "moveUp": "Pindahkan ke atas",
+    "moveDown": "Pindahkan ke bawah",
+    "reorderFailed": "Tidak dapat menyimpan urutan. Urutan awal dipulihkan. Coba lagi.",
+    "dragInstructions": "Tekan Spasi untuk memilih, tombol panah untuk memindahkan, Spasi untuk meletakkan, atau Escape untuk membatalkan.",
+    "dragStarted": "Lagu dipilih.",
+    "dragPosition": "Lagu di posisi {{position}}.",
+    "dragCancelled": "Perubahan urutan dibatalkan."
   },
   "rotation": {
     "assignSinger": "Tetapkan Penyanyi",

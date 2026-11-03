@@ -833,7 +833,19 @@
     "removedFromPlaylistToast": "Đã xóa {{count}} bài hát khỏi danh sách phát.",
     "section": "DANH SÁCH PHÁT",
     "newPlaylist": "[+] Danh sách phát mới…",
-    "removeFromPlaylist": "Xóa khỏi danh sách phát"
+    "removeFromPlaylist": "Xóa khỏi danh sách phát",
+    "replaceQueue": "Thay thế hàng đợi sắp phát",
+    "queueReplaced": "Đã thêm {{count}} bài vào hàng đợi",
+    "queueSkipped": "Đã bỏ qua {{count}} bài không có trong thư viện.",
+    "queueReplaceFailed": "Không thể thay thế hàng đợi. Hàng đợi không thay đổi. Hãy thử lại.",
+    "reorder": "Đổi vị trí {{title}}",
+    "moveUp": "Di chuyển lên",
+    "moveDown": "Di chuyển xuống",
+    "reorderFailed": "Không thể lưu thứ tự. Đã khôi phục thứ tự ban đầu. Hãy thử lại.",
+    "dragInstructions": "Nhấn Space để chọn, phím mũi tên để di chuyển, Space để thả hoặc Escape để hủy.",
+    "dragStarted": "Đã chọn bài hát.",
+    "dragPosition": "Bài hát ở vị trí {{position}}.",
+    "dragCancelled": "Đã hủy đổi thứ tự."
   },
   "rotation": {
     "assignSinger": "Gán ca sĩ",

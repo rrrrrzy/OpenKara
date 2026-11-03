@@ -833,7 +833,19 @@
     "removedFromPlaylistToast": "已從播放清單移除 {{count}} 首歌曲。",
     "section": "播放清單",
     "newPlaylist": "[+] 新增播放清單…",
-    "removeFromPlaylist": "從播放清單移除"
+    "removeFromPlaylist": "從播放清單移除",
+    "replaceQueue": "取代待播佇列",
+    "queueReplaced": "已加入 {{count}} 首歌曲",
+    "queueSkipped": "已略過曲庫中遺失的 {{count}} 首歌曲。",
+    "queueReplaceFailed": "無法取代待播佇列，原佇列已保留。請重試。",
+    "reorder": "調整 {{title}} 的順序",
+    "moveUp": "上移",
+    "moveDown": "下移",
+    "reorderFailed": "無法儲存播放清單順序，已還原原順序。請重試。",
+    "dragInstructions": "按空白鍵選取歌曲，使用方向鍵移動，再按空白鍵放下，或按 Escape 取消。",
+    "dragStarted": "已選取歌曲。",
+    "dragPosition": "歌曲位於第 {{position}} 位。",
+    "dragCancelled": "已取消調整順序。"
   },
   "rotation": {
     "assignSinger": "指派歌手",

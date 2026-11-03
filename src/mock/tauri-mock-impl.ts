@@ -1133,6 +1133,32 @@ export function createTauriMock(data: any): TauriMockResult {
       playlistSongs.set(args.playlistId, next);
       return undefined;
     },
+    reorder_playlist_songs: (args: {
+      playlistId: string;
+      songHashes: string[];
+    }) => {
+      const current = playlistSongs.get(args.playlistId) || [];
+      const byHash = new Map(current.map((entry) => [entry.song_hash, entry]));
+      if (
+        !playlists.some((playlist) => playlist.id === args.playlistId) ||
+        args.songHashes.length !== current.length ||
+        new Set(args.songHashes).size !== current.length ||
+        args.songHashes.some((hash) => !byHash.has(hash))
+      ) {
+        throw new Error(
+          "Playlist order must contain each current song exactly once",
+        );
+      }
+      playlistSongs.set(
+        args.playlistId,
+        args.songHashes.map((hash, index) => ({
+          ...byHash.get(hash)!,
+          sort_order: index,
+        })),
+      );
+      const playlist = playlists.find((entry) => entry.id === args.playlistId);
+      if (playlist) playlist.updated_at = Date.now();
+    },
     get_playlist_songs: (args: any) => playlistSongs.get(args.playlistId) || [],
 
     get_rotation_state: () => rotationState,

@@ -1,9 +1,25 @@
 // @vitest-environment jsdom
 
 import { renderToStaticMarkup } from "react-dom/server";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, test, vi } from "vite-plus/test";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+} from "@testing-library/react";
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  test,
+  vi,
+} from "vite-plus/test";
 import { SongList } from "./SongList";
+import { useQueueStore } from "@/stores/queue-store";
+import { notifyError, notifySuccess } from "@/lib/errors";
+import type { ContextMenuItem } from "./ContextMenu";
 import type { Song } from "@/types/ipc";
 
 type PlaylistEntry = {
@@ -18,6 +34,7 @@ const {
   mockPlaylistState,
   mockSettingsState,
   mockClearRangeSelectionAnchor,
+  mockReorderMenus,
 } = vi.hoisted(() => {
   const clearRangeSelectionAnchor = vi.fn();
   return {
@@ -29,6 +46,17 @@ const {
     },
     mockPlaylistState: {
       activePlaylistId: null as string | null,
+      activeSongs: [] as PlaylistEntry[],
+      songsLoading: false,
+      isSavingOrder: false,
+      isReplacingQueue: false,
+      reorderPlaylistSongs: vi.fn(async (_hashes: string[]) => {}),
+      replacePlaylistQueue: vi.fn(
+        async (
+          _replace: (hashes: string[]) => void,
+        ): Promise<{ count: number; skipped: number } | null> => null,
+      ),
+      loadActiveSongs: vi.fn(async () => {}),
       getPlaylistSongs: vi.fn(() => Promise.resolve<PlaylistEntry[]>([])),
       playlistSongSets: {} as Record<string, Set<string>>,
     },
@@ -36,8 +64,14 @@ const {
       librarySortMode: "recently_imported" as string,
     },
     mockClearRangeSelectionAnchor: clearRangeSelectionAnchor,
+    mockReorderMenus: vi.fn(),
   };
 });
+
+vi.mock("@/lib/errors", () => ({
+  notifyError: vi.fn(),
+  notifySuccess: vi.fn(),
+}));
 
 vi.mock("@/stores/library-store", () => ({
   useLibraryStore: (selector: (state: typeof mockLibraryState) => unknown) =>
@@ -45,8 +79,11 @@ vi.mock("@/stores/library-store", () => ({
 }));
 
 vi.mock("@/stores/playlist-store", () => ({
-  usePlaylistStore: (selector: (state: typeof mockPlaylistState) => unknown) =>
-    selector(mockPlaylistState),
+  usePlaylistStore: Object.assign(
+    (selector: (state: typeof mockPlaylistState) => unknown) =>
+      selector(mockPlaylistState),
+    { getState: () => mockPlaylistState },
+  ),
 }));
 
 vi.mock("@/stores/settings-store", () => ({
@@ -55,9 +92,16 @@ vi.mock("@/stores/settings-store", () => ({
 }));
 
 vi.mock("./SongListItem", () => ({
-  SongListItem: ({ song }: { song: Song }) => (
-    <div data-testid="song-item">{song.title}</div>
-  ),
+  SongListItem: ({
+    song,
+    reorderMenuItems,
+  }: {
+    song: Song;
+    reorderMenuItems?: ContextMenuItem[];
+  }) => {
+    mockReorderMenus(song.hash, reorderMenuItems);
+    return <div data-testid="song-item">{song.title}</div>;
+  },
 }));
 
 vi.mock("./EmptyLibrary", () => ({
@@ -293,6 +337,9 @@ describe("SongList sort mode effect", () => {
       original_ext: "mp3",
     };
     mockLibraryState.songs = [song];
+    mockPlaylistState.activeSongs = [
+      { song_hash: "song-1", added_at: 0, sort_order: 0, singer: null },
+    ];
     mockSettingsState.librarySortMode = "recently_imported";
 
     const { rerender } = render(<SongList />);
@@ -358,6 +405,9 @@ describe("SongList sort mode effect", () => {
         { song_hash: "song-1", added_at: 0, sort_order: 0, singer: null },
       ]),
     );
+    mockPlaylistState.activeSongs = [
+      { song_hash: "song-1", added_at: 0, sort_order: 0, singer: null },
+    ];
     mockSettingsState.librarySortMode = "recently_imported";
 
     const { rerender } = render(<SongList />);
@@ -425,11 +475,23 @@ describe("SongList playlist materialization", () => {
       ]),
     );
 
+    mockPlaylistState.activeSongs = [
+      { song_hash: "bbb", added_at: 0, sort_order: 0, singer: null },
+      { song_hash: "aaa", added_at: 0, sort_order: 1, singer: null },
+    ];
     render(<SongList />);
 
     const items = await screen.findAllByTestId("song-item");
     expect(items[0].textContent).toBe("Beta");
     expect(items[1].textContent).toBe("Alpha");
+    expect(mockReorderMenus).toHaveBeenCalledWith("bbb", [
+      expect.objectContaining({ label: "playlist.moveUp", disabled: true }),
+      expect.objectContaining({ label: "playlist.moveDown", disabled: false }),
+    ]);
+    expect(mockReorderMenus).toHaveBeenCalledWith("aaa", [
+      expect.objectContaining({ label: "playlist.moveUp", disabled: false }),
+      expect.objectContaining({ label: "playlist.moveDown", disabled: true }),
+    ]);
   });
 });
 
@@ -546,5 +608,134 @@ describe("SongList alphabet rail visibility", () => {
     fireEvent.click(buttonB);
 
     expect(mockClearRangeSelectionAnchor).toHaveBeenCalled();
+  });
+});
+
+describe("playlist actions", () => {
+  beforeEach(() => {
+    mockLibraryState.songs = [
+      makeSong({ hash: "a", title: "Alpha" }),
+      makeSong({ hash: "b", title: "Beta" }),
+    ];
+    mockLibraryState.filter = "all";
+    mockPlaylistState.activePlaylistId = "actions";
+    mockPlaylistState.activeSongs = [
+      { song_hash: "a", added_at: 0, sort_order: 0, singer: null },
+      { song_hash: "b", added_at: 0, sort_order: 1, singer: null },
+    ];
+    mockPlaylistState.isSavingOrder = false;
+    mockPlaylistState.isReplacingQueue = false;
+    mockPlaylistState.songsLoading = false;
+    mockPlaylistState.reorderPlaylistSongs
+      .mockReset()
+      .mockResolvedValue(undefined);
+    mockPlaylistState.replacePlaylistQueue.mockReset().mockResolvedValue(null);
+    mockReorderMenus.mockClear();
+    vi.mocked(notifyError).mockClear();
+    vi.mocked(notifySuccess).mockClear();
+    useQueueStore.setState({ queue: ["old"], playHistory: ["history"] });
+    vi.stubGlobal("CSS", { escape: (value: string) => value });
+    vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => {
+      callback(0);
+      return 1;
+    });
+  });
+
+  afterEach(() => {
+    cleanup();
+    mockPlaylistState.activePlaylistId = null;
+    mockPlaylistState.isSavingOrder = false;
+    mockLibraryState.songs = [];
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  function menuFor(hash: string): ContextMenuItem[] {
+    const call = mockReorderMenus.mock.calls.find(
+      ([songHash]) => songHash === hash,
+    );
+    expect(call).toBeDefined();
+    return call![1];
+  }
+
+  test("moving songs submits the full order and clears the range anchor", async () => {
+    render(<SongList />);
+    await act(async () => menuFor("a")[1].onClick?.());
+    expect(mockPlaylistState.reorderPlaylistSongs).toHaveBeenCalledWith([
+      "b",
+      "a",
+    ]);
+    expect(mockClearRangeSelectionAnchor).toHaveBeenCalled();
+    expect(notifyError).not.toHaveBeenCalled();
+    await act(async () => menuFor("b")[0].onClick?.());
+    expect(mockPlaylistState.reorderPlaylistSongs).toHaveBeenCalledTimes(2);
+  });
+
+  test("save failure reports recovery and a boundary move does not submit", async () => {
+    mockPlaylistState.reorderPlaylistSongs.mockRejectedValueOnce(
+      new Error("disk full"),
+    );
+    render(<SongList />);
+    await act(async () => menuFor("a")[0].onClick?.());
+    expect(mockPlaylistState.reorderPlaylistSongs).not.toHaveBeenCalled();
+    await act(async () => menuFor("a")[1].onClick?.());
+    expect(notifyError).toHaveBeenCalledWith(
+      new Error("playlist.reorderFailed"),
+    );
+  });
+
+  test("queue replacement publishes the loaded order and preserves history", async () => {
+    mockPlaylistState.replacePlaylistQueue.mockImplementationOnce(
+      async (replace) => {
+        replace(["b", "a"]);
+        return { count: 2, skipped: 1 };
+      },
+    );
+    render(<SongList />);
+    await act(async () =>
+      fireEvent.click(
+        screen.getByRole("button", { name: "playlist.replaceQueue" }),
+      ),
+    );
+    expect(useQueueStore.getState().queue).toEqual(["b", "a"]);
+    expect(useQueueStore.getState().playHistory).toEqual(["history"]);
+    expect(notifySuccess).toHaveBeenCalledWith(
+      "playlist.queueReplaced",
+      "playlist.queueSkipped",
+    );
+  });
+
+  test("failed reads preserve the queue and report an error", async () => {
+    mockPlaylistState.replacePlaylistQueue.mockRejectedValueOnce(
+      new Error("unavailable"),
+    );
+    render(<SongList />);
+    await act(async () =>
+      fireEvent.click(
+        screen.getByRole("button", { name: "playlist.replaceQueue" }),
+      ),
+    );
+    expect(useQueueStore.getState().queue).toEqual(["old"]);
+    expect(notifyError).toHaveBeenCalledWith(
+      new Error("playlist.queueReplaceFailed"),
+    );
+  });
+
+  test("save and empty states disable queue replacement", () => {
+    mockPlaylistState.isSavingOrder = true;
+    const { rerender } = render(<SongList />);
+    expect(
+      screen.getByRole<HTMLButtonElement>("button", {
+        name: "playlist.replaceQueue",
+      }).disabled,
+    ).toBe(true);
+    mockPlaylistState.isSavingOrder = false;
+    mockPlaylistState.activeSongs = [];
+    rerender(<SongList />);
+    expect(
+      screen.getByRole<HTMLButtonElement>("button", {
+        name: "playlist.replaceQueue",
+      }).disabled,
+    ).toBe(true);
   });
 });

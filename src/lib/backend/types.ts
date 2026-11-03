@@ -326,6 +326,7 @@ export interface PlaylistBackend {
     playlistId: string,
     songHashes: string[],
   ): Promise<void>;
+  reorderPlaylistSongs(playlistId: string, songHashes: string[]): Promise<void>;
   getPlaylistSongs(playlistId: string): Promise<PlaylistSong[]>;
   setRotationState(rotation: RotationState): Promise<void>;
   getRotationState(): Promise<RotationState>;

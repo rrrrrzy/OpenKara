@@ -929,7 +929,19 @@
     "removedFromPlaylistToast": "Removed {{count}} song(s) from playlist.",
     "section": "PLAYLISTS",
     "newPlaylist": "[+] New Playlist…",
-    "removeFromPlaylist": "Remove from Playlist"
+    "removeFromPlaylist": "Remove from Playlist",
+    "replaceQueue": "Replace upcoming queue",
+    "queueReplaced": "Queued {{count}} songs",
+    "queueSkipped": "Skipped {{count}} songs missing from the library.",
+    "queueReplaceFailed": "Could not replace the queue. The queue is unchanged. Try again.",
+    "reorder": "Reorder {{title}}",
+    "moveUp": "Move up",
+    "moveDown": "Move down",
+    "reorderFailed": "Could not save the playlist order. The original order was restored. Try again.",
+    "dragInstructions": "Press Space to pick up a song, use arrow keys to move it, Space to drop, or Escape to cancel.",
+    "dragStarted": "Song picked up.",
+    "dragPosition": "Song at position {{position}}.",
+    "dragCancelled": "Reorder cancelled."
   },
   "rotation": {
     "assignSinger": "Assign Singer",

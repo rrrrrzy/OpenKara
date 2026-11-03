@@ -833,7 +833,19 @@
     "removedFromPlaylistToast": "Çalma listesinden {{count}} şarkı kaldırıldı.",
     "section": "ÇALMA LİSTELERİ",
     "newPlaylist": "[+] Yeni Çalma Listesi…",
-    "removeFromPlaylist": "Çalma Listesinden Kaldır"
+    "removeFromPlaylist": "Çalma Listesinden Kaldır",
+    "replaceQueue": "Bekleyen kuyruğu değiştir",
+    "queueReplaced": "{{count}} şarkı kuyruğa eklendi",
+    "queueSkipped": "Kitaplıkta bulunmayan {{count}} şarkı atlandı.",
+    "queueReplaceFailed": "Kuyruk değiştirilemedi. Kuyruk aynı kaldı. Tekrar deneyin.",
+    "reorder": "{{title}} sırasını değiştir",
+    "moveUp": "Yukarı taşı",
+    "moveDown": "Aşağı taşı",
+    "reorderFailed": "Sıra kaydedilemedi. Önceki sıra geri yüklendi. Tekrar deneyin.",
+    "dragInstructions": "Seçmek için Boşluk, taşımak için ok tuşları, bırakmak için Boşluk veya iptal için Escape tuşuna basın.",
+    "dragStarted": "Şarkı seçildi.",
+    "dragPosition": "Şarkı {{position}}. konumda.",
+    "dragCancelled": "Sıralama iptal edildi."
   },
   "rotation": {
     "assignSinger": "Şarkıcı Ata",

@@ -834,7 +834,19 @@
     "removedFromPlaylistToast": "Rimosse {{count}} canzoni dalla playlist.",
     "section": "PLAYLIST",
     "newPlaylist": "[+] Nuova playlist…",
-    "removeFromPlaylist": "Rimuovi dalla playlist"
+    "removeFromPlaylist": "Rimuovi dalla playlist",
+    "replaceQueue": "Sostituisci la coda in attesa",
+    "queueReplaced": "{{count}} brani in coda",
+    "queueSkipped": "Saltati {{count}} brani mancanti nella libreria.",
+    "queueReplaceFailed": "Impossibile sostituire la coda. La coda è invariata. Riprova.",
+    "reorder": "Sposta {{title}}",
+    "moveUp": "Sposta su",
+    "moveDown": "Sposta giù",
+    "reorderFailed": "Impossibile salvare l’ordine. È stato ripristinato l’ordine originale. Riprova.",
+    "dragInstructions": "Premi Spazio per selezionare, le frecce per spostare, Spazio per rilasciare o Esc per annullare.",
+    "dragStarted": "Brano selezionato.",
+    "dragPosition": "Brano in posizione {{position}}.",
+    "dragCancelled": "Spostamento annullato."
   },
   "rotation": {
     "assignSinger": "Assegna cantante",

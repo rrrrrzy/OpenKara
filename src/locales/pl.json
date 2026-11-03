@@ -835,7 +835,19 @@
     "removedFromPlaylistToast": "Usunięto z playlisty utworów: {{count}}.",
     "section": "PLAYLISTY",
     "newPlaylist": "[+] Nowa playlista…",
-    "removeFromPlaylist": "Usuń z playlisty"
+    "removeFromPlaylist": "Usuń z playlisty",
+    "replaceQueue": "Zastąp kolejkę oczekujących",
+    "queueReplaced": "Dodano {{count}} utworów do kolejki",
+    "queueSkipped": "Pominięto {{count}} utworów brakujących w bibliotece.",
+    "queueReplaceFailed": "Nie udało się zastąpić kolejki. Kolejka nie została zmieniona. Spróbuj ponownie.",
+    "reorder": "Przenieś {{title}}",
+    "moveUp": "Przenieś w górę",
+    "moveDown": "Przenieś w dół",
+    "reorderFailed": "Nie udało się zapisać kolejności. Przywrócono pierwotną kolejność. Spróbuj ponownie.",
+    "dragInstructions": "Naciśnij spację, aby wybrać utwór, strzałki, aby go przenieść, spację, aby upuścić, lub Escape, aby anulować.",
+    "dragStarted": "Wybrano utwór.",
+    "dragPosition": "Utwór na pozycji {{position}}.",
+    "dragCancelled": "Anulowano zmianę kolejności."
   },
   "rotation": {
     "assignSinger": "Przypisz śpiewającego",
