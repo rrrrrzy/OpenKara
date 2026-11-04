@@ -798,6 +798,10 @@
       "enable": "Nicht gespielte Zeilen unscharf machen",
       "description": "Weicht vergangene und kommende Zeilen auf. Aus lassen, um vorauslesen zu können."
     },
+    "autoUpdateLyrics": {
+      "label": "Liedtexte automatisch online aktualisieren",
+      "description": "Online-Liedtextquellen dürfen geeignete vorhandene Liedtexte automatisch aktualisieren. Bei deaktivierter Option werden fehlende Liedtexte weiterhin online gesucht. Liedtexte können auch manuell abgerufen oder ersetzt werden."
+    },
     "onlineSources": {
       "label": "Online-Quellen",
       "description": "Schalte eine Musik- oder Videoquelle ein. Beide bleiben aus, bis du sie wählst.",

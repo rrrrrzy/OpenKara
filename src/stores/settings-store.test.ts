@@ -75,6 +75,7 @@ function makeAppSettings(overrides: Partial<AppSettings> = {}): AppSettings {
     hide_batch_separate: false,
     cover_art_backdrop: true,
     lyrics_blur_inactive: false,
+    auto_update_lyrics: true,
     hide_upgrade_all: false,
     lyrics_font_step: 0,
     execution_provider: "cpu",
@@ -144,6 +145,8 @@ describe("settings-store sync", () => {
     primary.store.getState().open();
 
     expect(secondary.store.getState().isOpen).toBe(true);
+    primary.store.getState().patchAppSettings({ autoUpdateLyrics: false });
+    expect(secondary.store.getState().autoUpdateLyrics).toBe(false);
 
     primary.dispose();
     secondary.dispose();
@@ -235,6 +238,7 @@ describe("settings-store actions", () => {
       hide_batch_separate: true,
       cover_art_backdrop: false,
       lyrics_blur_inactive: false,
+      auto_update_lyrics: true,
       hide_upgrade_all: true,
       lyrics_font_step: 1,
       execution_provider: "xnnpack",
@@ -263,6 +267,17 @@ describe("settings-store actions", () => {
     const settings = makeAppSettings({ cover_art_backdrop: false });
     store.getState().hydrateAppSettings(settings);
     expect(store.getState().coverArtBackdrop).toBe(false);
+  });
+
+  test("automatic lyrics updates default on and hydrate a persisted opt-out", () => {
+    expect(store.getState().autoUpdateLyrics).toBe(true);
+    store
+      .getState()
+      .hydrateAppSettings(makeAppSettings({ auto_update_lyrics: false }));
+    expect(store.getState().autoUpdateLyrics).toBe(false);
+    expect(store.getState().getAppSettingsSnapshot().autoUpdateLyrics).toBe(
+      false,
+    );
   });
 
   test("patchAppSettings applies partial update", () => {
@@ -530,6 +545,7 @@ describe("settings-store actions", () => {
       hideBatchSeparate: true,
       coverArtBackdrop: false,
       lyricsBlurInactive: false,
+      autoUpdateLyrics: true,
       hideUpgradeAll: true,
       lyricsFontStep: 1,
       executionProvider: "xnnpack",
@@ -551,6 +567,7 @@ describe("settings-store actions", () => {
       hideBatchSeparate: true,
       coverArtBackdrop: false,
       lyricsBlurInactive: false,
+      autoUpdateLyrics: true,
       hideUpgradeAll: true,
       lyricsFontStep: 1,
       executionProvider: "xnnpack",

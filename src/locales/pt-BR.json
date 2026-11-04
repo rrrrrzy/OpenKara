@@ -799,6 +799,10 @@
       "enable": "Desfocar letras que não estão tocando",
       "description": "Suaviza linhas passadas e futuras. Deixe desligado para ler com antecedência."
     },
+    "autoUpdateLyrics": {
+      "label": "Atualizar letras automaticamente on-line",
+      "description": "Permite que fontes de letras on-line atualizem automaticamente as letras existentes que atendam aos critérios. Quando desativado, letras ausentes ainda serão buscadas on-line, e você poderá obtê-las ou substituí-las manualmente."
+    },
     "onlineSources": {
       "label": "Fontes online",
       "description": "Ative uma origem de música ou vídeo. As duas ficam desligadas até você escolhê-las.",

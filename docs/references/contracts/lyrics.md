@@ -116,6 +116,15 @@
 
 Probe-fresh upgrade is `NotApplicable`: persist unchanged, no publish. Command still returns the current cache row.
 
+`auto_update_lyrics = false` adds an earlier guard to `automatic_upgrade`: if
+the current cache has nonempty lyrics and its source is not `absent`, return
+the current cache without HTTP. Check again at persistence time; a late
+result must not change the cache, offset, or probe stamp, or cause a publish.
+The frontend skips the automatic request and ignores late display results
+while existing lyrics are protected by this preference. `fetch_lyrics` first
+acquisition, existing TTL rules, and explicit `user_replace` stay unchanged.
+See [settings.md](./settings.md#automatic-online-lyrics-updates).
+
 ### Command: `import_lyrics_files`
 
 **Input**

@@ -14,6 +14,7 @@ Field or command semantic changes must update this document before changing UI c
 | `hide_batch_separate` | `boolean` | Hide batch-separate action in UI |
 | `cover_art_backdrop` | `boolean` | Show blurred cover-art backdrop in player |
 | `lyrics_blur_inactive` | `boolean` | Blur past and upcoming lyric lines. Default `false` so singers can read ahead. |
+| `auto_update_lyrics` | `boolean` | Allow automatic online updates of eligible existing lyrics. Default `true`. |
 | `hide_upgrade_all` | `boolean` | Hide "Upgrade All to 4-stem" action in UI |
 | `lyrics_font_step` | `i8` | Range `[-2, 2]`, 0 = default |
 | `execution_provider` | `string` | Active ONNX Runtime execution provider. When unset, OpenKara selects a runtime provider only when the current target and host capability support it; otherwise it selects CPU. Apple Silicon uses CoreML, Windows uses DirectML only with a usable D3D12 hardware adapter, and Intel macOS/Linux use the measured CPU default. |
@@ -84,6 +85,7 @@ stays explicitly dark regardless of the primary preference.
 - `set_hide_batch_separate(value: bool) -> AppSettings`
 - `set_cover_art_backdrop(value: bool) -> AppSettings`
 - `set_lyrics_blur_inactive(value: bool) -> AppSettings`
+- `set_auto_update_lyrics(value: bool) -> AppSettings`
 - `set_hide_upgrade_all(value: bool) -> AppSettings`
 - `set_lyrics_font_step(step: i8) -> AppSettings`
 - `set_execution_provider(provider: String) -> AppSettings`
@@ -251,3 +253,24 @@ for a conflict without that record (for example a non-WebDAV provider).
   column order or `CREATE` statement) differ on one of the three snapshots,
   or when the indexes, triggers or views differ between the remote and the
   local snapshot.
+
+## Automatic online lyrics updates
+
+`auto_update_lyrics` is an application preference in `config.json`. An absent
+field means `true`, so existing installs keep their behavior. The setter
+returns the updated `AppSettings` snapshot. No lyrics database migration is
+required.
+
+When false, `automatic_upgrade` must not replace existing nonempty lyrics.
+This includes unsynced embedded text and lyrics cached from Online Lyrics
+Sources. The existing source-protection rules still apply when true.
+Initial acquisition for songs without lyrics and explicit `user_replace`
+requests keep their behavior. Negative-cache and probe TTL rules stay.
+
+The backend checks the preference before HTTP and before an automatic cache
+write. A save of this preference and the final automatic cache write share a
+short lock. If the user disables updates before a pending result commits,
+that result cannot replace existing lyrics, reset their offset, stamp a
+probe, or publish a remote change. HTTP that has already started may finish.
+The frontend also checks the current preference before it applies a result.
+Enabling the preference does not trigger a request by itself.

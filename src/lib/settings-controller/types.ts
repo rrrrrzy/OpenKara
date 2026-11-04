@@ -134,6 +134,7 @@ export interface WritablePreferences {
   hideBatchSeparate: boolean;
   coverArtBackdrop: boolean;
   lyricsBlurInactive: boolean;
+  autoUpdateLyrics: boolean;
   hideUpgradeAll: boolean;
   eqEnabled: boolean;
   eqGainsDb: [number, number, number, number, number];

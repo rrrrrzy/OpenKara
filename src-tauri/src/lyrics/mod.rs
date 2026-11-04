@@ -8,3 +8,4 @@ pub mod lrclib;
 pub mod lys_parser;
 pub mod parser;
 pub mod ttml_parser;
+pub(crate) mod update_policy;

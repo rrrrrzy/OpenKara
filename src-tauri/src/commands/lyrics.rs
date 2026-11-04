@@ -591,35 +591,93 @@ fn fetch_lyrics_online_on_thread(
         &state.lrclib_client,
         &state.lrcapi_client,
     );
-    let online_result = acquisition.fetch_online(&connection, song_id, intent)?;
-    let should_publish = !matches!(
+    let online_result = fetch_online_with_policy(
+        &acquisition,
+        &connection,
+        &state.shell.app_data_dir,
+        song_id,
+        intent,
+    )?;
+    if matches!(
         online_result,
-        crate::lyrics::fetch::OnlineLyricsResult::NotApplicable
-    );
+        lyrics::fetch::OnlineLyricsResult::NotApplicable
+    ) {
+        return payload_from_latest_cache(&library_root, song_id);
+    }
     let song_id_owned = song_id.to_owned();
 
+    let mut update_guard = None;
     let publication = remote::PublishChanges::new(state, app_handle);
     let applied = publication.apply(remote::Change::new(
         remote::ChangeScope::Songs(vec![song_id_owned.clone()]),
-        move |connection: &Connection, _library: &LibraryRoot| {
-            LyricsAcquisition::persist_online_result(
+        |connection: &Connection, _library: &LibraryRoot| {
+            persist_online_result_with_policy(
                 connection,
+                &state.shell.app_data_dir,
                 &song_id_owned,
                 online_result,
                 intent,
+                &mut update_guard,
             )
             .map_err(Into::into)
         },
         move |result: &LyricsPersistenceResult| {
-            if should_publish && result.changed {
+            if result.changed {
                 remote::ChangeScope::Songs(vec![song_id.to_owned()])
             } else {
                 remote::ChangeScope::None
             }
         },
     ))?;
+    // The publication layer commits after the mutation callback returns.
+    drop(update_guard);
     publication.publish(&applied.scope)?;
     payload_from_latest_cache(&library_root, song_id)
+}
+
+fn fetch_online_with_policy(
+    acquisition: &LyricsAcquisition<'_>,
+    connection: &Connection,
+    app_data_dir: &Path,
+    song_id: &str,
+    intent: LyricsOnlineFetchIntent,
+) -> Result<lyrics::fetch::OnlineLyricsResult, LyricsError> {
+    if lyrics::update_policy::blocks_automatic_update(connection, app_data_dir, song_id, intent)? {
+        return Ok(lyrics::fetch::OnlineLyricsResult::NotApplicable);
+    }
+    acquisition.fetch_online(connection, song_id, intent)
+}
+
+fn persist_online_result_with_policy(
+    connection: &Connection,
+    app_data_dir: &Path,
+    song_id: &str,
+    result: lyrics::fetch::OnlineLyricsResult,
+    intent: LyricsOnlineFetchIntent,
+    update_guard: &mut Option<std::sync::MutexGuard<'static, ()>>,
+) -> Result<LyricsPersistenceResult, LyricsError> {
+    *update_guard = if intent == LyricsOnlineFetchIntent::AutomaticUpgrade {
+        Some(
+            lyrics::update_policy::AUTO_UPDATE_LOCK
+                .lock()
+                .map_err(|_| {
+                    LyricsError::Internal("lyrics update policy lock was poisoned".to_owned())
+                })?,
+        )
+    } else {
+        None
+    };
+    let result = if lyrics::update_policy::blocks_automatic_update(
+        connection,
+        app_data_dir,
+        song_id,
+        intent,
+    )? {
+        lyrics::fetch::OnlineLyricsResult::NotApplicable
+    } else {
+        result
+    };
+    LyricsAcquisition::persist_online_result(connection, song_id, result, intent)
 }
 
 fn payload_from_latest_cache(
@@ -712,6 +770,241 @@ mod tests {
             raw_lrc: "[00:01.00]Online line one\n[00:02.00]Online line two\n".to_owned(),
             word_timed_checked_at: None,
         }))
+    }
+
+    fn set_auto_updates(app_data_dir: &Path, enabled: bool) {
+        let config = crate::config::AppConfig {
+            auto_update_lyrics: Some(enabled),
+            ..Default::default()
+        };
+        let _guard = lyrics::update_policy::AUTO_UPDATE_LOCK
+            .lock()
+            .expect("policy lock");
+        crate::config::save_config(app_data_dir, &config).expect("save policy");
+    }
+
+    #[test]
+    fn disabled_auto_updates_do_not_request_online_sources_for_existing_lyrics() {
+        let conn = test_db();
+        let app_data = tempfile::tempdir().expect("app data");
+        set_auto_updates(app_data.path(), false);
+        let mut server = mockito::Server::new();
+        let network = server.mock("GET", mockito::Matcher::Any).expect(0).create();
+        let amll = lyrics::amll::AmllClient::new(server.url());
+        let lrclib = lyrics::lrclib::LrcLibClient::new(server.url());
+        let lrcapi = lyrics::lrcapi::LrcApiClient::new(server.url());
+        let acquisition = LyricsAcquisition::new(&amll, &lrclib, &lrcapi);
+        for source in [
+            LyricsSource::Embedded,
+            LyricsSource::LrcLib,
+            LyricsSource::LrcApi,
+            LyricsSource::LrcApiTtml,
+            LyricsSource::Sidecar,
+            LyricsSource::Manual,
+        ] {
+            insert_song(&conn, "existing");
+            seed_entry(&conn, "existing", source, "Existing lyrics");
+            let result = fetch_online_with_policy(
+                &acquisition,
+                &conn,
+                app_data.path(),
+                "existing",
+                LyricsOnlineFetchIntent::AutomaticUpgrade,
+            )
+            .expect("automatic lookup");
+            assert!(matches!(
+                result,
+                lyrics::fetch::OnlineLyricsResult::NotApplicable
+            ));
+        }
+        network.assert();
+    }
+
+    #[test]
+    fn disabled_auto_updates_allow_first_acquisition_and_explicit_replacement() {
+        let conn = test_db();
+        let app_data = tempfile::tempdir().expect("app data");
+        let library_dir = tempfile::tempdir().expect("library parent");
+        let library = LibraryRoot::create(&library_dir.path().join("library")).expect("library");
+        set_auto_updates(app_data.path(), false);
+        insert_song(&conn, "missing");
+        std::fs::copy(
+            Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/metadata/fixture.mp3"),
+            library.resolve("media/missing.mp3"),
+        )
+        .expect("copy audio without lyrics");
+        let mut server = mockito::Server::new();
+        let amll_mock = server
+            .mock("GET", "/v1/lyrics/search")
+            .match_query(mockito::Matcher::Any)
+            .with_status(404)
+            .expect(2)
+            .create();
+        let lrclib_mock = server
+            .mock("GET", "/api/get")
+            .match_query(mockito::Matcher::Any)
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_body(r#"{"id":1,"trackName":"Title","artistName":"Artist","duration":30,"instrumental":false,"syncedLyrics":"[00:01.00]Online lyrics"}"#)
+            .expect(2)
+            .create();
+        let amll = lyrics::amll::AmllClient::new(server.url());
+        let lrclib = lyrics::lrclib::LrcLibClient::new(server.url());
+        let lrcapi = lyrics::lrcapi::LrcApiClient::new(server.url());
+        let acquisition = LyricsAcquisition::new(&amll, &lrclib, &lrcapi);
+        let result = acquisition
+            .acquire(&conn, &library, "missing")
+            .expect("first acquisition");
+        assert!(matches!(result, LyricsAcquisitionResult::Fetched(_)));
+        LyricsAcquisition::persist_acquisition(&conn, "missing", &result)
+            .expect("persist first result");
+        let result = fetch_online_with_policy(
+            &acquisition,
+            &conn,
+            app_data.path(),
+            "missing",
+            LyricsOnlineFetchIntent::UserReplace,
+        )
+        .expect("manual lookup");
+        let persisted = persist_online_result_with_policy(
+            &conn,
+            app_data.path(),
+            "missing",
+            result,
+            LyricsOnlineFetchIntent::UserReplace,
+            &mut None,
+        )
+        .expect("manual persist");
+        assert!(persisted.changed);
+        assert_eq!(
+            persisted.fetched.expect("lyrics").source,
+            LyricsSource::LrcLib
+        );
+        amll_mock.assert();
+        lrclib_mock.assert();
+    }
+
+    #[test]
+    fn disabled_auto_updates_keep_fresh_negative_cache_without_http() {
+        let conn = test_db();
+        let app_data = tempfile::tempdir().expect("app data");
+        let parent = tempfile::tempdir().expect("library parent");
+        let library = LibraryRoot::create(&parent.path().join("library")).expect("library");
+        set_auto_updates(app_data.path(), false);
+        insert_song(&conn, "absent");
+        seed_entry(&conn, "absent", LyricsSource::Absent, "");
+        let mut entry = cache::lyrics::get_lyrics_cache_entry(&conn, "absent")
+            .unwrap()
+            .unwrap();
+        entry.fetched_at = current_unix_timestamp().expect("now");
+        cache::lyrics::upsert_lyrics_cache_entry(&conn, &entry).expect("fresh negative cache");
+        let mut server = mockito::Server::new();
+        let network = server.mock("GET", mockito::Matcher::Any).expect(0).create();
+        let amll = lyrics::amll::AmllClient::new(server.url());
+        let lrclib = lyrics::lrclib::LrcLibClient::new(server.url());
+        let lrcapi = lyrics::lrcapi::LrcApiClient::new(server.url());
+        let acquisition = LyricsAcquisition::new(&amll, &lrclib, &lrcapi);
+        assert!(matches!(
+            acquisition
+                .acquire(&conn, &library, "absent")
+                .expect("cached miss"),
+            LyricsAcquisitionResult::NegativeCacheHit
+        ));
+        network.assert();
+    }
+
+    #[test]
+    fn automatic_update_lock_outlives_the_cache_mutation_until_transaction_commit() {
+        let conn = test_db();
+        let app_data = tempfile::tempdir().expect("app data");
+        set_auto_updates(app_data.path(), true);
+        insert_song(&conn, "transaction");
+        seed_entry(
+            &conn,
+            "transaction",
+            LyricsSource::Embedded,
+            "Existing lyrics",
+        );
+        let tx = conn.unchecked_transaction().expect("transaction");
+        let mut guard = None;
+        let persisted = persist_online_result_with_policy(
+            &tx,
+            app_data.path(),
+            "transaction",
+            lyrics::fetch::OnlineLyricsResult::Found(synced_online_result().unwrap().unwrap()),
+            LyricsOnlineFetchIntent::AutomaticUpgrade,
+            &mut guard,
+        )
+        .expect("cache mutation");
+        assert!(persisted.changed);
+        assert!(lyrics::update_policy::AUTO_UPDATE_LOCK.try_lock().is_err());
+        let root = app_data.path().to_owned();
+        let (send, receive) = std::sync::mpsc::channel();
+        let writer = std::thread::spawn(move || {
+            set_auto_updates(&root, false);
+            send.send(()).expect("signal saved");
+        });
+        tx.commit().expect("commit before releasing policy lock");
+        assert!(lyrics::update_policy::AUTO_UPDATE_LOCK.try_lock().is_err());
+        assert!(receive.try_recv().is_err());
+        drop(guard);
+        receive.recv().expect("preference save can now complete");
+        writer.join().expect("writer");
+        let config = crate::config::load_config(app_data.path())
+            .unwrap()
+            .unwrap();
+        assert!(!config.effective_auto_update_lyrics());
+    }
+
+    #[test]
+    fn disabling_before_pending_result_is_applied_preserves_cache_and_probe_stamp() {
+        let conn = test_db();
+        let app_data = tempfile::tempdir().expect("app data");
+        insert_song(&conn, "pending");
+        for source in [
+            LyricsSource::Embedded,
+            LyricsSource::LrcLib,
+            LyricsSource::Manual,
+        ] {
+            set_auto_updates(app_data.path(), true);
+            seed_entry(&conn, "pending", source, "[00:01.00]Keep existing");
+            let mut before = cache::lyrics::get_lyrics_cache_entry(&conn, "pending")
+                .unwrap()
+                .unwrap();
+            before.offset_ms = -250;
+            before.word_timed_checked_at = Some(123);
+            cache::lyrics::upsert_lyrics_cache_entry(&conn, &before).expect("cache");
+            let (send, receive) = std::sync::mpsc::channel();
+            let root = app_data.path().to_owned();
+            let writer = std::thread::spawn(move || {
+                set_auto_updates(&root, false);
+                send.send(()).expect("signal disabled");
+            });
+            receive
+                .recv()
+                .expect("wait until preference save completes");
+            writer.join().expect("preference writer");
+            for result in [
+                lyrics::fetch::OnlineLyricsResult::Found(synced_online_result().unwrap().unwrap()),
+                lyrics::fetch::OnlineLyricsResult::WordTimedProbeMiss,
+                lyrics::fetch::OnlineLyricsResult::DefiniteMissing,
+            ] {
+                let persisted = persist_online_result_with_policy(
+                    &conn,
+                    app_data.path(),
+                    "pending",
+                    result,
+                    LyricsOnlineFetchIntent::AutomaticUpgrade,
+                    &mut None,
+                )
+                .expect("late result");
+                assert!(!persisted.changed);
+                let after = cache::lyrics::get_lyrics_cache_entry(&conn, "pending")
+                    .unwrap()
+                    .unwrap();
+                assert_eq!(after, before);
+            }
+        }
     }
 
     fn apply_online_lyrics_result(

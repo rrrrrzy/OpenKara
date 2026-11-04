@@ -798,6 +798,10 @@
       "enable": "Làm mờ lời chưa/đã hát",
       "description": "Làm mềm các dòng trước và sau. Hãy tắt nếu cần đọc trước khi hát."
     },
+    "autoUpdateLyrics": {
+      "label": "Tự động cập nhật lời bài hát trực tuyến",
+      "description": "Cho phép các nguồn lời bài hát trực tuyến tự động cập nhật lời hiện có đáp ứng điều kiện. Khi tắt, lời còn thiếu vẫn được tìm trực tuyến và bạn có thể lấy hoặc thay thế lời theo cách thủ công."
+    },
     "onlineSources": {
       "label": "Nguồn trực tuyến",
       "description": "Bật nguồn nhạc hoặc video. Cả hai đều tắt cho đến khi bạn chọn.",

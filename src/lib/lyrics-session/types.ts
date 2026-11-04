@@ -65,6 +65,7 @@ export interface PlaybackClockPort {
 
 export interface LyricsSessionDependencies {
   lyrics: LyricsBackend;
+  preferences: { autoUpdateLyrics: () => boolean };
   romanization: RomanizationPort;
   songLanguage: SongLanguagePort;
   clock: PlaybackClockPort;

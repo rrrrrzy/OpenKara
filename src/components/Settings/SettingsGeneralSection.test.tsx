@@ -11,7 +11,10 @@ import {
   test,
   vi,
 } from "vite-plus/test";
-import { createInitializedSettingsHarness } from "@/test-utils/settings-controller";
+import {
+  createInitializedSettingsHarness,
+  createSettingsHarness,
+} from "@/test-utils/settings-controller";
 import { SettingsControllerContext } from "./SettingsController.context";
 import { SettingsGeneralSection } from "./SettingsGeneralSection";
 
@@ -112,5 +115,63 @@ describe("SettingsGeneralSection", () => {
 
     await user.click(blurCheckbox!);
     expect(setLyricsBlurInactive).toHaveBeenCalledWith(true);
+  });
+
+  test("automatic lyrics updates default on and have a keyboard toggle and description", async () => {
+    const harness = await createInitializedSettingsHarness();
+    const write = vi.spyOn(harness.backend.settings, "setAutoUpdateLyrics");
+    act(() => {
+      root.render(
+        <SettingsControllerContext value={harness.controller}>
+          <SettingsGeneralSection />
+        </SettingsControllerContext>,
+      );
+    });
+    const label = [...container.querySelectorAll("label")].find((label) =>
+      label.textContent?.includes("Automatically update lyrics online"),
+    );
+    const checkbox = label?.querySelector<HTMLInputElement>(
+      'input[type="checkbox"]',
+    );
+    expect(checkbox?.checked).toBe(true);
+    expect(checkbox?.getAttribute("aria-describedby")).toBe(
+      "settings-auto-update-lyrics-description",
+    );
+    checkbox?.focus();
+    await user.keyboard(" ");
+    expect(write).toHaveBeenCalledWith(false);
+    expect(harness.view().preferences.autoUpdateLyrics).toBe(false);
+  });
+
+  test("automatic lyrics updates show the persisted disabled state", async () => {
+    const harness = await createInitializedSettingsHarness({
+      settings: { auto_update_lyrics: false },
+    });
+    act(() => {
+      root.render(
+        <SettingsControllerContext value={harness.controller}>
+          <SettingsGeneralSection />
+        </SettingsControllerContext>,
+      );
+    });
+    const checkbox = container.querySelector<HTMLInputElement>(
+      '[aria-describedby="settings-auto-update-lyrics-description"]',
+    );
+    expect(checkbox?.checked).toBe(false);
+  });
+
+  test("automatic lyrics updates cannot be changed before settings initialize", () => {
+    const harness = createSettingsHarness();
+    act(() => {
+      root.render(
+        <SettingsControllerContext value={harness.controller}>
+          <SettingsGeneralSection />
+        </SettingsControllerContext>,
+      );
+    });
+    const checkbox = container.querySelector<HTMLInputElement>(
+      '[aria-describedby="settings-auto-update-lyrics-description"]',
+    );
+    expect(checkbox?.disabled).toBe(true);
   });
 });

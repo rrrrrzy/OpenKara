@@ -899,6 +899,10 @@
     "lyricsBlurInactive": {
       "enable": "Blur lyrics that are not playing",
       "description": "Softens past and upcoming lines. Leave this off so you can read ahead while singing."
+    },
+    "autoUpdateLyrics": {
+      "label": "Automatically update lyrics online",
+      "description": "Allow online lyrics sources to update eligible existing lyrics automatically. When off, missing lyrics can still be found online, and you can fetch or replace lyrics manually."
     }
   },
   "bootstrap": {

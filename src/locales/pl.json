@@ -800,6 +800,10 @@
       "enable": "Rozmyj nieodtwarzane wersy",
       "description": "Zmiękcza minione i nadchodzące linie. Zostaw wyłączone, by czytać z wyprzedzeniem."
     },
+    "autoUpdateLyrics": {
+      "label": "Automatycznie aktualizuj teksty online",
+      "description": "Zezwalaj źródłom tekstów online na automatyczne aktualizowanie istniejących tekstów spełniających warunki. Po wyłączeniu brakujące teksty nadal będą wyszukiwane online. Możesz też pobrać lub zastąpić tekst ręcznie."
+    },
     "onlineSources": {
       "label": "Źródła online",
       "description": "Włącz źródło muzyki lub wideo. Oba pozostają wyłączone, dopóki ich nie wybierzesz.",

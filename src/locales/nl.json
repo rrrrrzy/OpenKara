@@ -798,6 +798,10 @@
       "enable": "Niet-spelende regels vervagen",
       "description": "Maakt vorige en volgende regels zachter. Laat uit om vooruit te lezen."
     },
+    "autoUpdateLyrics": {
+      "label": "Songteksten automatisch online bijwerken",
+      "description": "Sta online songtekstbronnen toe om geschikte bestaande songteksten automatisch bij te werken. Als dit uitstaat, worden ontbrekende songteksten nog steeds online gezocht en kun je teksten handmatig ophalen of vervangen."
+    },
     "onlineSources": {
       "label": "Online bronnen",
       "description": "Zet een muziek- of videobron aan. Beide blijven uit tot je ze kiest.",

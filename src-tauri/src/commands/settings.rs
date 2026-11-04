@@ -19,6 +19,7 @@ pub struct AppSettings {
     pub hide_batch_separate: bool,
     pub cover_art_backdrop: bool,
     pub lyrics_blur_inactive: bool,
+    pub auto_update_lyrics: bool,
     pub hide_upgrade_all: bool,
     pub lyrics_font_step: i8,
     pub execution_provider: String,
@@ -49,6 +50,7 @@ fn settings_from_config(config: &AppConfig) -> AppSettings {
         hide_batch_separate: config.hide_batch_separate.unwrap_or(false),
         cover_art_backdrop: config.cover_art_backdrop.unwrap_or(true),
         lyrics_blur_inactive: config.lyrics_blur_inactive.unwrap_or(false),
+        auto_update_lyrics: config.effective_auto_update_lyrics(),
         hide_upgrade_all: config.hide_upgrade_all.unwrap_or(false),
         lyrics_font_step: config.effective_lyrics_font_step(),
         execution_provider: ep.as_str().to_owned(),
@@ -87,12 +89,8 @@ fn persist_lyrics_font_step(app_data_dir: &Path, step: i8) -> CommandResult<AppS
 }
 
 #[tauri::command]
-pub fn get_settings(app_handle: AppHandle) -> CommandResult<AppSettings> {
-    let app_data_dir = app_handle
-        .path()
-        .app_data_dir()
-        .map_err(|e| internal_error(format!("failed to get app data dir: {e}")))?;
-    let config = config::load_config(&app_data_dir)
+pub fn get_settings(state: State<'_, AppState>) -> CommandResult<AppSettings> {
+    let config = config::load_config(&state.shell.app_data_dir)
         .map_err(|e| internal_error(format!("failed to load config: {e}")))?
         .unwrap_or_default();
     Ok(settings_from_config(&config))
@@ -228,6 +226,27 @@ pub fn set_cover_art_backdrop(app_handle: AppHandle, value: bool) -> CommandResu
     config.cover_art_backdrop = Some(value);
     config::save_config(&app_data_dir, &config)
         .map_err(|e| internal_error(format!("failed to save config: {e}")))?;
+    Ok(settings_from_config(&config))
+}
+
+#[tauri::command]
+pub fn set_auto_update_lyrics(
+    state: State<'_, AppState>,
+    value: bool,
+) -> CommandResult<AppSettings> {
+    persist_auto_update_lyrics(&state.shell.app_data_dir, value)
+}
+
+fn persist_auto_update_lyrics(app_data_dir: &Path, value: bool) -> CommandResult<AppSettings> {
+    let _guard = crate::lyrics::update_policy::AUTO_UPDATE_LOCK
+        .lock()
+        .map_err(|_| internal_error("lyrics update policy lock was poisoned"))?;
+    let mut config = config::load_config(app_data_dir)
+        .map_err(|error| internal_error(format!("failed to load config: {error}")))?
+        .unwrap_or_default();
+    config.auto_update_lyrics = Some(value);
+    config::save_config(app_data_dir, &config)
+        .map_err(|error| internal_error(format!("failed to save config: {error}")))?;
     Ok(settings_from_config(&config))
 }
 
@@ -615,6 +634,52 @@ mod tests {
     #[test]
     fn a_build_without_streaming_sources_reports_them_unsupported() {
         assert!(!streaming_sources_supported());
+    }
+
+    #[test]
+    fn settings_commands_use_the_resolved_application_data_directory() {
+        let temp = tempfile::tempdir().expect("app data");
+        let mut state = AppState::test_fixture();
+        state.shell.app_data_dir = temp.path().to_owned();
+        let app = tauri::test::mock_app();
+        app.manage(state);
+        assert!(
+            get_settings(app.state())
+                .expect("defaults")
+                .auto_update_lyrics
+        );
+        assert!(
+            !set_auto_update_lyrics(app.state(), false)
+                .expect("disable")
+                .auto_update_lyrics
+        );
+        assert!(
+            !get_settings(app.state())
+                .expect("reload from resolved directory")
+                .auto_update_lyrics
+        );
+    }
+
+    #[test]
+    fn automatic_lyrics_updates_default_on_and_survive_restart() {
+        let temp = tempfile::tempdir().expect("app data");
+        let legacy: AppConfig =
+            serde_json::from_str(r#"{"language":"ja"}"#).expect("legacy config");
+        assert!(settings_from_config(&legacy).auto_update_lyrics);
+        config::save_config(temp.path(), &legacy).expect("save legacy config");
+        let settings = persist_auto_update_lyrics(temp.path(), false).expect("disable updates");
+        assert!(!settings.auto_update_lyrics);
+        assert_eq!(settings.language.as_deref(), Some("ja"));
+        let loaded = config::load_config(temp.path())
+            .expect("reload config")
+            .expect("config");
+        assert!(!loaded.effective_auto_update_lyrics());
+        assert!(!settings_from_config(&loaded).auto_update_lyrics);
+        assert!(
+            persist_auto_update_lyrics(temp.path(), true)
+                .expect("enable updates")
+                .auto_update_lyrics
+        );
     }
 
     #[test]

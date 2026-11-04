@@ -394,6 +394,12 @@ export class LyricsSession {
     source: LyricsSource | null,
     lines: LyricLine[],
   ): boolean {
+    if (
+      !this.deps.preferences.autoUpdateLyrics() &&
+      lines.some((line) => line.text.trim())
+    ) {
+      return false;
+    }
     if (source !== null && AUTO_UPGRADE_PROTECTED_SOURCES.has(source)) {
       return false;
     }
@@ -411,6 +417,12 @@ export class LyricsSession {
         "automatic_upgrade",
       );
       const currentSource = this.getState().source;
+      if (
+        !this.deps.preferences.autoUpdateLyrics() &&
+        this.getState().lines.some((line) => line.text.trim())
+      ) {
+        return;
+      }
       if (
         generation !== this.fetchGeneration ||
         this.getState().songId !== songId ||

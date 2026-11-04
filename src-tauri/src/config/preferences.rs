@@ -111,6 +111,10 @@ impl ModelVariant {
 }
 
 impl AppConfig {
+    pub fn effective_auto_update_lyrics(&self) -> bool {
+        self.auto_update_lyrics.unwrap_or(true)
+    }
+
     pub fn effective_stem_mode(&self) -> StemMode {
         self.stem_mode.unwrap_or_default()
     }
@@ -191,6 +195,7 @@ mod tests {
             hide_batch_separate: None,
             cover_art_backdrop: None,
             lyrics_blur_inactive: None,
+            auto_update_lyrics: None,
             hide_upgrade_all: None,
             model_variant: None,
             lyrics_font_step: None,
@@ -230,6 +235,7 @@ mod tests {
             hide_batch_separate: None,
             cover_art_backdrop: None,
             lyrics_blur_inactive: None,
+            auto_update_lyrics: None,
             hide_upgrade_all: None,
             model_variant: None,
             lyrics_font_step: None,

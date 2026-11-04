@@ -23,6 +23,7 @@ export interface AppSettingsSnapshot {
   hideBatchSeparate: boolean;
   coverArtBackdrop: boolean;
   lyricsBlurInactive: boolean;
+  autoUpdateLyrics: boolean;
   hideUpgradeAll: boolean;
   lyricsFontStep: number;
   executionProvider: ExecutionProvider;
@@ -47,6 +48,7 @@ interface SettingsState {
   hideBatchSeparate: AppSettingsSnapshot["hideBatchSeparate"];
   coverArtBackdrop: AppSettingsSnapshot["coverArtBackdrop"];
   lyricsBlurInactive: AppSettingsSnapshot["lyricsBlurInactive"];
+  autoUpdateLyrics: AppSettingsSnapshot["autoUpdateLyrics"];
   hideUpgradeAll: AppSettingsSnapshot["hideUpgradeAll"];
   lyricsFontStep: AppSettingsSnapshot["lyricsFontStep"];
   executionProvider: AppSettingsSnapshot["executionProvider"];
@@ -92,6 +94,7 @@ export const DEFAULT_APP_SETTINGS: AppSettingsSnapshot = {
   hideBatchSeparate: false,
   coverArtBackdrop: true,
   lyricsBlurInactive: false,
+  autoUpdateLyrics: true,
   hideUpgradeAll: false,
   lyricsFontStep: 0,
   executionProvider: "cpu",
@@ -116,6 +119,7 @@ function toAppSettingsSnapshot(settings: AppSettings): AppSettingsSnapshot {
     hideBatchSeparate: settings.hide_batch_separate,
     coverArtBackdrop: settings.cover_art_backdrop,
     lyricsBlurInactive: settings.lyrics_blur_inactive ?? false,
+    autoUpdateLyrics: settings.auto_update_lyrics ?? true,
     hideUpgradeAll: settings.hide_upgrade_all,
     lyricsFontStep: settings.lyrics_font_step,
     executionProvider: settings.execution_provider,
@@ -143,6 +147,7 @@ function selectAppSettingsSnapshot(
     hideBatchSeparate: state.hideBatchSeparate,
     coverArtBackdrop: state.coverArtBackdrop,
     lyricsBlurInactive: state.lyricsBlurInactive,
+    autoUpdateLyrics: state.autoUpdateLyrics,
     hideUpgradeAll: state.hideUpgradeAll,
     lyricsFontStep: state.lyricsFontStep,
     executionProvider: state.executionProvider,
@@ -183,6 +188,7 @@ function applySettingsSyncSnapshot(
     hideBatchSeparate: snapshot.hideBatchSeparate,
     coverArtBackdrop: snapshot.coverArtBackdrop,
     lyricsBlurInactive: snapshot.lyricsBlurInactive,
+    autoUpdateLyrics: snapshot.autoUpdateLyrics,
     hideUpgradeAll: snapshot.hideUpgradeAll,
     lyricsFontStep: snapshot.lyricsFontStep,
     executionProvider: snapshot.executionProvider,

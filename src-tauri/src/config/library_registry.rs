@@ -327,6 +327,7 @@ mod tests {
             hide_batch_separate: Some(true),
             cover_art_backdrop: None,
             lyrics_blur_inactive: None,
+            auto_update_lyrics: None,
             hide_upgrade_all: None,
             model_variant: Some(ModelVariant::HtdemucsFt),
             lyrics_font_step: Some(1),

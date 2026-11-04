@@ -283,6 +283,7 @@ pub fn run() {
             commands::settings::set_hide_batch_separate,
             commands::settings::set_cover_art_backdrop,
             commands::settings::set_lyrics_blur_inactive,
+            commands::settings::set_auto_update_lyrics,
             commands::settings::set_hide_upgrade_all,
             commands::settings::set_lyrics_font_step,
             commands::settings::set_execution_provider,

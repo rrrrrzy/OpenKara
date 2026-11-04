@@ -47,7 +47,7 @@ interface Harness extends TestLyricsSession {
   };
 }
 
-function setup(): Harness {
+function setup(autoUpdateLyrics: () => boolean = () => true): Harness {
   const lyrics = {
     fetchLyrics: vi.fn(),
     fetchLyricsOnline: vi
@@ -57,7 +57,7 @@ function setup(): Harness {
     saveManualLyrics: vi.fn(),
   };
   const backend = createMockBackend({ overrides: { lyrics } });
-  return { ...createTestLyricsSession({ backend }), lyrics };
+  return { ...createTestLyricsSession({ backend, autoUpdateLyrics }), lyrics };
 }
 
 async function load(harness: Harness, next: LyricsPayload): Promise<void> {
@@ -76,6 +76,80 @@ describe("LyricsSession.load", () => {
   let harness: Harness;
   beforeEach(() => {
     harness = setup();
+  });
+
+  test.each([
+    "embedded",
+    "lrc_lib",
+    "lrc_api",
+    "lrc_api_ttml",
+    "manual",
+    "sidecar",
+  ] as const)(
+    "disabled automatic updates preserve existing %s lyrics",
+    async (source) => {
+      harness = setup(() => false);
+      await load(
+        harness,
+        payload({ source, lines: [line(0, "Local lyrics")] }),
+      );
+      expect(harness.lyrics.fetchLyricsOnline).not.toHaveBeenCalled();
+      expect(harness.session.getState().lines[0].text).toBe("Local lyrics");
+      expect(harness.session.getState().source).toBe(source);
+    },
+  );
+
+  test("disabled updates still load initially acquired online lyrics", async () => {
+    harness = setup(() => false);
+    await load(
+      harness,
+      payload({
+        source: "lrc_lib",
+        lines: [line(1000, "First online result")],
+      }),
+    );
+    expect(harness.lyrics.fetchLyrics).toHaveBeenCalledWith("song-1");
+    expect(harness.lyrics.fetchLyricsOnline).not.toHaveBeenCalled();
+    expect(harness.session.getState().lines[0].text).toBe(
+      "First online result",
+    );
+  });
+
+  test("disabling while an automatic update is pending discards its display result", async () => {
+    let enabled = true;
+    harness = setup(() => enabled);
+    let release: (next: LyricsPayload) => void = () => {};
+    harness.lyrics.fetchLyricsOnline.mockReturnValue(
+      new Promise<LyricsPayload>((resolve) => {
+        release = resolve;
+      }),
+    );
+    const loading = load(
+      harness,
+      payload({ lines: [line(0, "Keep me")], offsetMs: -250 }),
+    );
+    await vi.waitFor(() =>
+      expect(harness.lyrics.fetchLyricsOnline).toHaveBeenCalled(),
+    );
+    enabled = false;
+    release(
+      payload({ source: "lrc_lib", lines: [line(1000, "Do not replace")] }),
+    );
+    await loading;
+    expect(harness.session.getState().lines[0].text).toBe("Keep me");
+    expect(harness.session.getState().offsetMs).toBe(-250);
+    expect(harness.session.getState().source).toBe("embedded");
+  });
+
+  test("reenabling only requests an upgrade on the next lyrics load", async () => {
+    let enabled = false;
+    harness = setup(() => enabled);
+    const local = payload({ lines: [line(0, "Local")] });
+    await load(harness, local);
+    enabled = true;
+    expect(harness.lyrics.fetchLyricsOnline).not.toHaveBeenCalled();
+    await load(harness, local);
+    expect(harness.lyrics.fetchLyricsOnline).toHaveBeenCalledOnce();
   });
 
   test("publishes the acquired lyrics, their source, and the stored offset", async () => {

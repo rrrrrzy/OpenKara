@@ -798,6 +798,10 @@
       "enable": "Çalmayan dizeleri bulanıklaştır",
       "description": "Geçmiş ve gelecek dizeleri yumuşatır. Önceden okumak için kapalı bırakın."
     },
+    "autoUpdateLyrics": {
+      "label": "Şarkı sözlerini çevrimiçi otomatik güncelle",
+      "description": "Çevrimiçi şarkı sözü kaynaklarının uygun mevcut sözleri otomatik güncellemesine izin ver. Kapalıyken eksik sözler çevrimiçi aranmaya devam eder; sözleri elle de alabilir veya değiştirebilirsiniz."
+    },
     "onlineSources": {
       "label": "Çevrimiçi kaynaklar",
       "description": "Bir müzik veya video kaynağını açın. Siz seçene kadar ikisi de kapalı kalır.",

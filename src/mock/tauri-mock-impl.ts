@@ -1223,6 +1223,13 @@ export function createTauriMock(data: any): TauriMockResult {
       };
       return settingsSnapshot;
     },
+    set_auto_update_lyrics: (args: { value: boolean }) => {
+      settingsSnapshot = {
+        ...settingsSnapshot,
+        auto_update_lyrics: args.value,
+      };
+      return settingsSnapshot;
+    },
     set_lyrics_blur_inactive: (args: any) => {
       settingsSnapshot = {
         ...settingsSnapshot,

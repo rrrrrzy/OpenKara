@@ -803,6 +803,10 @@
     "lyricsBlurInactive": {
       "enable": "模糊非当前歌词",
       "description": "虚化当前句以外的歌词。卡拉OK需要提前看清后面几行时请保持关闭。"
+    },
+    "autoUpdateLyrics": {
+      "label": "自动在线更新歌词",
+      "description": "允许在线歌词源自动更新符合条件的已有歌词。关闭后，无歌词时仍会在线查找，也可手动获取或替换歌词。"
     }
   },
   "bootstrap": {

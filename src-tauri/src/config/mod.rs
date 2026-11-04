@@ -35,6 +35,8 @@ pub struct AppConfig {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub lyrics_blur_inactive: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub auto_update_lyrics: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub hide_upgrade_all: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub model_variant: Option<ModelVariant>,

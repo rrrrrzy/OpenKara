@@ -10,6 +10,7 @@ import {
   type SongLanguagePort,
 } from "@/lib/lyrics-session";
 import { romanizeLyricsLines } from "@/lib/lyrics-romanizer";
+import { useSettingsStore } from "@/stores/settings-store";
 import { useLibraryStore } from "@/stores/library-store";
 import { selectCurrentPositionMs, usePlayerStore } from "@/stores/player-store";
 
@@ -39,6 +40,9 @@ const playbackClock: PlaybackClockPort = {
 
 export const lyricsSession = createLyricsSession({
   lyrics: tauriBackend.lyrics,
+  preferences: {
+    autoUpdateLyrics: () => useSettingsStore.getState().autoUpdateLyrics,
+  },
   romanization: { romanize: romanizeLyricsLines },
   songLanguage,
   clock: playbackClock,

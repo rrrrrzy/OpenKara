@@ -110,6 +110,7 @@ export class FakeClock implements PlaybackClockPort {
 
 export interface TestLyricsSessionOptions {
   backend?: Backend;
+  autoUpdateLyrics?: () => boolean;
   songLanguage?: SongLanguagePort;
   reportError?: (error: unknown) => void;
 }
@@ -136,6 +137,7 @@ export function createTestLyricsSession(
 
   const session = createLyricsSession({
     lyrics: backend.lyrics,
+    preferences: { autoUpdateLyrics: options.autoUpdateLyrics ?? (() => true) },
     romanization,
     songLanguage: options.songLanguage ?? { read: () => null },
     clock,

@@ -104,4 +104,29 @@ test.describe("Settings accessibility", () => {
     });
     expect(unlabeled).toEqual([]);
   });
+
+  test("automatic lyrics updates support keyboard toggling and retain the choice", async ({
+    page,
+  }) => {
+    await page.getByRole("button", { name: "Settings" }).click();
+    const dialog = page.getByRole("dialog", { name: "Preferences" });
+    const toggle = dialog.getByRole("checkbox", {
+      name: "Automatically update lyrics online",
+    });
+    await expect(toggle).toBeChecked();
+    await expect(toggle).toHaveAccessibleDescription(
+      /missing lyrics can still be found online/,
+    );
+    await toggle.scrollIntoViewIfNeeded();
+    await dialog
+      .getByRole("checkbox", { name: "Blur lyrics that are not playing" })
+      .focus();
+    await page.keyboard.press("Tab");
+    await expect(toggle).toBeFocused();
+    await page.keyboard.press("Space");
+    await expect(toggle).not.toBeChecked();
+    await dialog.getByRole("button", { name: "Close" }).click();
+    await page.getByRole("button", { name: "Settings" }).click();
+    await expect(toggle).not.toBeChecked();
+  });
 });

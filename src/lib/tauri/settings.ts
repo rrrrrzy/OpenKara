@@ -45,6 +45,9 @@ export function createSettingsCommands(invoke: InvokeCommand): SettingsBackend {
     setCoverArtBackdrop: (value) =>
       invoke<AppSettings>("set_cover_art_backdrop", { value }),
 
+    setAutoUpdateLyrics: (value) =>
+      invoke<AppSettings>("set_auto_update_lyrics", { value }),
+
     setLyricsBlurInactive: (value) =>
       invoke<AppSettings>("set_lyrics_blur_inactive", { value }),
 

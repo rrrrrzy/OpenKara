@@ -590,6 +590,7 @@ export interface AppSettings {
   hide_batch_separate: boolean;
   cover_art_backdrop: boolean;
   lyrics_blur_inactive: boolean;
+  auto_update_lyrics: boolean;
   hide_upgrade_all: boolean;
   lyrics_font_step: number;
   execution_provider: ExecutionProvider;

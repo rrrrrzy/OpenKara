@@ -799,6 +799,10 @@
       "enable": "Desenfocar las letras que no suenan",
       "description": "Suaviza las líneas pasadas y siguientes. Déjalo apagado para leer con antelación."
     },
+    "autoUpdateLyrics": {
+      "label": "Actualizar letras automáticamente en línea",
+      "description": "Permite que las fuentes de letras en línea actualicen automáticamente las letras existentes que cumplan los requisitos. Si se desactiva, las letras ausentes se seguirán buscando en línea y podrás obtenerlas o reemplazarlas manualmente."
+    },
     "onlineSources": {
       "label": "Orígenes en línea",
       "description": "Activa un origen de música o vídeo. Ambos siguen apagados hasta que los elijas.",

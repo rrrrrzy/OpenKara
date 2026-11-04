@@ -61,6 +61,7 @@ const BASE_SETTINGS: AppSettings = {
   hide_batch_separate: false,
   cover_art_backdrop: true,
   lyrics_blur_inactive: false,
+  auto_update_lyrics: true,
   hide_upgrade_all: false,
   lyrics_font_step: 0,
   execution_provider: "cpu",
@@ -828,6 +829,63 @@ describe("preferences", () => {
     expect(harness.view().preferences.lyricsBlurInactive).toBe(true);
     expect(setOnlineSourceEnabled).toHaveBeenCalledWith("youtube", true);
     expect(harness.view().preferences.youtubeSourceEnabled).toBe(true);
+  });
+
+  test("a rejected automatic lyrics update write restores the previous preference", async () => {
+    const harness = createSettingsHarness({
+      overrides: {
+        settings: {
+          setAutoUpdateLyrics: async () => {
+            throw new Error("lyrics update write failed");
+          },
+        },
+      },
+    });
+
+    expect(harness.view().preferences.autoUpdateLyrics).toBe(true);
+    await harness.controller.preferences.set({ autoUpdateLyrics: false });
+
+    expect(harness.notifyError).toHaveBeenCalledWith(expect.any(Error));
+    expect(harness.view().preferences.autoUpdateLyrics).toBe(true);
+  });
+
+  test("overlapping automatic lyrics update writes keep the last requested value", async () => {
+    let stored = appSettings();
+    let releaseFirst: ((settings: AppSettings) => void) | undefined;
+    const firstWrite = new Promise<AppSettings>((resolve) => {
+      releaseFirst = resolve;
+    });
+    const setAutoUpdateLyrics = vi
+      .fn<(value: boolean) => Promise<AppSettings>>()
+      .mockImplementationOnce(() => firstWrite)
+      .mockImplementation(async (value: boolean) => {
+        stored = { ...stored, auto_update_lyrics: value };
+        return stored;
+      });
+    const harness = createSettingsHarness({
+      overrides: {
+        settings: { setAutoUpdateLyrics },
+      },
+    });
+
+    const first = harness.controller.preferences.set({
+      autoUpdateLyrics: false,
+    });
+    const second = harness.controller.preferences.set({
+      autoUpdateLyrics: true,
+    });
+
+    await vi.waitFor(() => {
+      expect(setAutoUpdateLyrics).toHaveBeenCalledTimes(1);
+    });
+    expect(setAutoUpdateLyrics).toHaveBeenCalledWith(false);
+
+    releaseFirst?.({ ...stored, auto_update_lyrics: false });
+    await first;
+    await second;
+
+    expect(setAutoUpdateLyrics).toHaveBeenNthCalledWith(2, true);
+    expect(harness.view().preferences.autoUpdateLyrics).toBe(true);
   });
 
   test("a rejected lyrics blur write restores the previous preference", async () => {

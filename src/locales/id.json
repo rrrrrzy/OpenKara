@@ -798,6 +798,10 @@
       "enable": "Buramkan lirik yang tidak sedang diputar",
       "description": "Melembutkan baris lalu dan berikutnya. Biarkan mati agar bisa membaca ke depan."
     },
+    "autoUpdateLyrics": {
+      "label": "Perbarui lirik secara otomatis dari internet",
+      "description": "Izinkan sumber lirik daring memperbarui lirik yang sudah ada dan memenuhi syarat secara otomatis. Saat dinonaktifkan, lirik yang belum tersedia tetap dicari secara daring, dan Anda dapat mengambil atau mengganti lirik secara manual."
+    },
     "onlineSources": {
       "label": "Sumber daring",
       "description": "Nyalakan sumber musik atau video. Keduanya tetap mati sampai Anda memilihnya.",

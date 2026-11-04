@@ -799,6 +799,10 @@
       "enable": "Sfoca i versi non in riproduzione",
       "description": "Ammorbidisce i versi passati e successivi. Lascialo spento per leggere in anticipo."
     },
+    "autoUpdateLyrics": {
+      "label": "Aggiorna automaticamente i testi online",
+      "description": "Consenti alle fonti di testi online di aggiornare automaticamente i testi esistenti idonei. Se disattivato, i testi mancanti vengono comunque cercati online e puoi recuperarli o sostituirli manualmente."
+    },
     "onlineSources": {
       "label": "Origini online",
       "description": "Attiva un’origine musicale o video. Entrambe restano disattivate finché non le scegli.",

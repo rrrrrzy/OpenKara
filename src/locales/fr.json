@@ -799,6 +799,10 @@
       "enable": "Flouter les paroles non en cours",
       "description": "Adoucit les lignes passées et suivantes. Laissez désactivé pour lire à l’avance."
     },
+    "autoUpdateLyrics": {
+      "label": "Mettre à jour automatiquement les paroles en ligne",
+      "description": "Autoriser les sources de paroles en ligne à mettre à jour automatiquement les paroles existantes admissibles. Si cette option est désactivée, les paroles manquantes sont toujours recherchées en ligne et vous pouvez les récupérer ou les remplacer manuellement."
+    },
     "onlineSources": {
       "label": "Sources en ligne",
       "description": "Activez une origine musicale ou vidéo. Les deux restent désactivées jusqu’à ce que vous les choisissiez.",
