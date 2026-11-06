@@ -90,7 +90,7 @@
      */
     --ambience-scrim: rgba(0, 0, 0, 0.5);
     --ambience-backdrop-opacity: 0.4;
-    --ambience-backdrop-filter: blur(40px) saturate(0.85) brightness(0.75);
+    --ambience-backdrop-color-filter: saturate(0.85) brightness(0.75);
     --color-lyrics-active: #ffffff;
     --color-lyrics-past: rgba(255, 255, 255, 0.45);
     --color-lyrics-future: rgba(255, 255, 255, 0.5);
@@ -164,7 +164,7 @@
      */
     --ambience-scrim: rgba(255, 255, 255, 0.5);
     --ambience-backdrop-opacity: 0.55;
-    --ambience-backdrop-filter: blur(40px) saturate(0.85) brightness(1.05);
+    --ambience-backdrop-color-filter: saturate(0.85) brightness(1.05);
     --color-lyrics-active: #16171a;
     --color-lyrics-past: rgba(29, 29, 31, 0.42);
     --color-lyrics-future: rgba(29, 29, 31, 0.48);

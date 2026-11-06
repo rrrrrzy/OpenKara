@@ -601,7 +601,11 @@
     },
     "coverArtBackdrop": {
       "hide": "Tắt nền ảnh bìa album làm mờ",
-      "description": "Bỏ ảnh bìa album làm mờ phía sau lời."
+      "description": "Bỏ ảnh bìa album làm mờ phía sau lời.",
+      "blur": "Độ mờ nhòe",
+      "opacity": "Độ đục",
+      "opacityDescription": "Giá trị càng thấp, nền càng trong suốt.",
+      "reset": "Khôi phục mặc định"
     },
     "appearance": {
       "label": "Giao diện",

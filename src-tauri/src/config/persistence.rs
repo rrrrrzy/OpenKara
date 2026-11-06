@@ -165,6 +165,8 @@ mod tests {
             language: None,
             hide_batch_separate: None,
             cover_art_backdrop: None,
+            cover_art_backdrop_blur_px: None,
+            cover_art_backdrop_opacity_percent: None,
             lyrics_blur_inactive: Some(true),
             auto_update_lyrics: None,
             hide_upgrade_all: None,

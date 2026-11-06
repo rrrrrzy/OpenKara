@@ -326,6 +326,8 @@ mod tests {
             language: Some("zh-CN".to_owned()),
             hide_batch_separate: Some(true),
             cover_art_backdrop: None,
+            cover_art_backdrop_blur_px: None,
+            cover_art_backdrop_opacity_percent: None,
             lyrics_blur_inactive: None,
             auto_update_lyrics: None,
             hide_upgrade_all: None,

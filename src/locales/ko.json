@@ -601,7 +601,11 @@
     },
     "coverArtBackdrop": {
       "hide": "흐린 앨범 아트 배경 끄기",
-      "description": "가사 뒤의 흐린 앨범 커버를 제거해요."
+      "description": "가사 뒤의 흐린 앨범 커버를 제거해요.",
+      "blur": "흐림 정도",
+      "opacity": "불투명도",
+      "opacityDescription": "값이 낮을수록 배경이 더 투명해집니다.",
+      "reset": "기본값 복원"
     },
     "appearance": {
       "label": "화면 모드",

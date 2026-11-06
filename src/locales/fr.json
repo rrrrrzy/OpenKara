@@ -602,7 +602,11 @@
     },
     "coverArtBackdrop": {
       "hide": "Désactiver l'arrière-plan flouté de la pochette",
-      "description": "Supprime la pochette floutée derrière les paroles."
+      "description": "Supprime la pochette floutée derrière les paroles.",
+      "blur": "Flou",
+      "opacity": "Opacité",
+      "opacityDescription": "Une valeur plus faible rend le fond plus transparent.",
+      "reset": "Rétablir les valeurs par défaut"
     },
     "appearance": {
       "label": "Apparence",

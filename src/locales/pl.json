@@ -603,7 +603,11 @@
     },
     "coverArtBackdrop": {
       "hide": "Wyłącz rozmyte tło z okładki albumu",
-      "description": "Usuwa rozmytą okładkę albumu za tekstem."
+      "description": "Usuwa rozmytą okładkę albumu za tekstem.",
+      "blur": "Rozmycie",
+      "opacity": "Krycie",
+      "opacityDescription": "Niższe wartości zwiększają przezroczystość tła.",
+      "reset": "Przywróć domyślne"
     },
     "appearance": {
       "label": "Wygląd",

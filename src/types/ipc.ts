@@ -589,6 +589,8 @@ export interface AppSettings {
   language: string | null;
   hide_batch_separate: boolean;
   cover_art_backdrop: boolean;
+  cover_art_backdrop_blur_px: number;
+  cover_art_backdrop_opacity_percent: number | null;
   lyrics_blur_inactive: boolean;
   auto_update_lyrics: boolean;
   hide_upgrade_all: boolean;

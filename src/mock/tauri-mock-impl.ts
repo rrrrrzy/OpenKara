@@ -1216,6 +1216,28 @@ export function createTauriMock(data: any): TauriMockResult {
       };
       return settingsSnapshot;
     },
+    set_cover_art_backdrop_style: (args: {
+      blurPx: number;
+      opacityPercent: number | null;
+    }) => {
+      if (
+        !Number.isInteger(args.blurPx) ||
+        args.blurPx < 0 ||
+        args.blurPx > 80 ||
+        (args.opacityPercent !== null &&
+          (!Number.isInteger(args.opacityPercent) ||
+            args.opacityPercent < 0 ||
+            args.opacityPercent > 100))
+      ) {
+        throw new Error("invalid cover art backdrop style");
+      }
+      settingsSnapshot = {
+        ...settingsSnapshot,
+        cover_art_backdrop_blur_px: args.blurPx,
+        cover_art_backdrop_opacity_percent: args.opacityPercent,
+      };
+      return settingsSnapshot;
+    },
     set_cover_art_backdrop: (args: any) => {
       settingsSnapshot = {
         ...settingsSnapshot,

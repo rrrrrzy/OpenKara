@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
@@ -88,6 +89,111 @@ describe("SettingsGeneralSection", () => {
     await user.click(lightRadio!);
 
     expect(setThemePreference).toHaveBeenCalledWith("light");
+  });
+
+  test("backdrop sliders preview independently and flush the final pair on interaction end", async () => {
+    const harness = await createInitializedSettingsHarness();
+    const write = vi.spyOn(
+      harness.backend.settings,
+      "setCoverArtBackdropStyle",
+    );
+    act(() => {
+      root.render(
+        <SettingsControllerContext value={harness.controller}>
+          <SettingsGeneralSection />
+        </SettingsControllerContext>,
+      );
+    });
+    const blur = container.querySelector<HTMLInputElement>(
+      "#settings-backdrop-blur",
+    )!;
+    const opacity = container.querySelector<HTMLInputElement>(
+      "#settings-backdrop-opacity",
+    )!;
+    expect(blur.value).toBe("40");
+    expect(opacity.value).toBe("40");
+    act(() => {
+      fireEvent.change(blur, { target: { value: "80" } });
+    });
+    expect(harness.preferencesStore.getState().coverArtBackdropBlurPx).toBe(80);
+    expect(
+      harness.preferencesStore.getState().coverArtBackdropOpacityPercent,
+    ).toBeNull();
+    act(() => {
+      fireEvent.change(opacity, { target: { value: "0" } });
+    });
+    expect(write).not.toHaveBeenCalled();
+    await act(async () => {
+      fireEvent.pointerUp(opacity);
+    });
+    expect(write).toHaveBeenCalledExactlyOnceWith(80, 0);
+    await user.click(
+      [...container.querySelectorAll("button")].find(
+        (button) => button.textContent === "Restore defaults",
+      )!,
+    );
+    expect(blur.value).toBe("40");
+    expect(opacity.value).toBe("40");
+    expect(write).toHaveBeenLastCalledWith(40, null);
+  });
+
+  test("backdrop controls disable with the background and retain saved values", async () => {
+    const harness = await createInitializedSettingsHarness({
+      settings: {
+        cover_art_backdrop: false,
+        cover_art_backdrop_blur_px: 65,
+        cover_art_backdrop_opacity_percent: 75,
+      },
+    });
+    act(() => {
+      root.render(
+        <SettingsControllerContext value={harness.controller}>
+          <SettingsGeneralSection />
+        </SettingsControllerContext>,
+      );
+    });
+    const blur = container.querySelector<HTMLInputElement>(
+      "#settings-backdrop-blur",
+    )!;
+    const opacity = container.querySelector<HTMLInputElement>(
+      "#settings-backdrop-opacity",
+    )!;
+    expect(blur.disabled).toBe(true);
+    expect(opacity.disabled).toBe(true);
+    expect(blur.value).toBe("65");
+    expect(opacity.value).toBe("75");
+    const hide = [...container.querySelectorAll("label")]
+      .find((label) =>
+        label.textContent?.includes("Disable blurred album art backdrop"),
+      )!
+      .querySelector("input")!;
+    await user.click(hide);
+    expect(blur.disabled).toBe(false);
+    expect(opacity.value).toBe("75");
+  });
+
+  test("unmount flushes an edit before the debounce delay", async () => {
+    const harness = await createInitializedSettingsHarness();
+    const write = vi.spyOn(
+      harness.backend.settings,
+      "setCoverArtBackdropStyle",
+    );
+    act(() => {
+      root.render(
+        <SettingsControllerContext value={harness.controller}>
+          <SettingsGeneralSection />
+        </SettingsControllerContext>,
+      );
+    });
+    act(() => {
+      fireEvent.change(container.querySelector("#settings-backdrop-blur")!, {
+        target: { value: "20" },
+      });
+    });
+    await act(async () => {
+      root.render(null);
+    });
+    expect(write).toHaveBeenCalledExactlyOnceWith(20, null);
   });
 
   test("leaves lyric blur off until the user opts in", async () => {

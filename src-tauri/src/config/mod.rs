@@ -33,6 +33,10 @@ pub struct AppConfig {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cover_art_backdrop: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub cover_art_backdrop_blur_px: Option<u8>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cover_art_backdrop_opacity_percent: Option<u8>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub lyrics_blur_inactive: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub auto_update_lyrics: Option<bool>,

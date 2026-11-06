@@ -601,7 +601,11 @@
     },
     "coverArtBackdrop": {
       "hide": "ぼかしたアルバムアートの背景を無効化",
-      "description": "歌詞の背後にあるぼかしたアルバムカバーを削除します。"
+      "description": "歌詞の背後にあるぼかしたアルバムカバーを削除します。",
+      "blur": "ぼかし",
+      "opacity": "不透明度",
+      "opacityDescription": "値を下げると背景がより透明になります。",
+      "reset": "初期設定に戻す"
     },
     "appearance": {
       "label": "外観",

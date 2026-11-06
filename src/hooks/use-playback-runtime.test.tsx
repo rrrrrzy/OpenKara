@@ -546,6 +546,8 @@ describe("fullscreen playback runtime", () => {
       language: "en",
       hide_batch_separate: false,
       cover_art_backdrop: true,
+      cover_art_backdrop_blur_px: 40,
+      cover_art_backdrop_opacity_percent: null,
       lyrics_blur_inactive: false,
       auto_update_lyrics: true,
       hide_upgrade_all: false,

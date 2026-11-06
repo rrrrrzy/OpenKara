@@ -1,4 +1,5 @@
-import { expect, test } from "./fixtures/accessibility-test";
+import AxeBuilder from "@axe-core/playwright";
+import { expect, test, WCAG_AA_TAGS } from "./fixtures/accessibility-test";
 
 test.describe("Settings accessibility", () => {
   test.describe.configure({ retries: 0 });
@@ -129,4 +130,96 @@ test.describe("Settings accessibility", () => {
     await page.getByRole("button", { name: "Settings" }).click();
     await expect(toggle).not.toBeChecked();
   });
+});
+
+test("cover backdrop sliders support keyboard editing, theme defaults, and reset", async ({
+  page,
+  tauriMock,
+  a11y,
+}) => {
+  await page.goto("/");
+  await expect(page.getByText("Earfquake")).toBeVisible();
+  await page.getByRole("button", { name: "Earfquake", exact: true }).dblclick();
+  await expect(page.getByRole("button", { name: /pause/i })).toBeVisible();
+  await page.getByRole("button", { name: "Settings" }).click();
+  const dialog = page.getByRole("dialog", { name: "Preferences" });
+  const hide = dialog.getByRole("checkbox", {
+    name: "Disable blurred album art backdrop",
+  });
+  await hide.uncheck();
+  const image = page.locator("[data-native-stage-backdrop] > div").first();
+  await expect(image).toHaveCSS("opacity", "0.4");
+  await expect(image).toHaveCSS("filter", /blur\(40px\)/);
+  const viewport = await page
+    .getByTestId("lyrics-scroll-viewport")
+    .elementHandle();
+  const blur = dialog.getByRole("slider", { name: "Blur", exact: true });
+  const opacity = dialog.getByRole("slider", { name: "Opacity", exact: true });
+  await expect(blur).toHaveValue("40");
+  await expect(opacity).toHaveValue("40");
+  await dialog.getByRole("radio", { name: "Light", exact: true }).check();
+  await expect(opacity).toHaveValue("55");
+  await expect(image).toHaveCSS("opacity", "0.55");
+  await opacity.scrollIntoViewIfNeeded();
+  await opacity.focus();
+  await page.keyboard.press("Home");
+  await expect(opacity).toHaveValue("0");
+  await blur.focus();
+  await page.keyboard.press("End");
+  await expect(blur).toHaveValue("80");
+  await expect(image).toHaveCSS("filter", /blur\(80px\)/);
+  await expect(image).toHaveCSS("opacity", "0");
+  expect(await viewport?.evaluate((element) => element.isConnected)).toBe(true);
+  const overscan = await image.evaluate((element) => {
+    const imageBounds = element.getBoundingClientRect();
+    const stageBounds = element.parentElement!.getBoundingClientRect();
+    return [
+      stageBounds.left - imageBounds.left,
+      imageBounds.right - stageBounds.right,
+      stageBounds.top - imageBounds.top,
+      imageBounds.bottom - stageBounds.bottom,
+    ];
+  });
+  for (const margin of overscan) expect(margin).toBeGreaterThanOrEqual(240);
+  await expect
+    .poll(
+      async () =>
+        (await tauriMock.getInvokeCalls())
+          .filter((call) => call.cmd === "set_cover_art_backdrop_style")
+          .at(-1)?.args,
+    )
+    .toEqual({ blurPx: 80, opacityPercent: 0 });
+  await dialog.getByRole("radio", { name: "Dark", exact: true }).check();
+  await expect(opacity).toHaveValue("0");
+  for (const theme of ["dark", "light"] as const) {
+    await a11y.setTheme(theme);
+    const result = await new AxeBuilder({ page })
+      .include("section:has(#settings-backdrop-blur)")
+      .withTags(WCAG_AA_TAGS)
+      .analyze();
+    expect(result.violations).toEqual([]);
+  }
+  await a11y.setTheme("dark");
+  await dialog.getByRole("button", { name: "Close", exact: true }).click();
+  await page.getByRole("button", { name: "Settings" }).click();
+  await expect(blur).toHaveValue("80");
+  await expect(opacity).toHaveValue("0");
+  await hide.check();
+  await expect(blur).toBeDisabled();
+  await expect(opacity).toBeDisabled();
+  await hide.uncheck();
+  await expect(blur).toHaveValue("80");
+  await dialog
+    .getByRole("button", { name: "Restore defaults", exact: true })
+    .click();
+  await expect(blur).toHaveValue("40");
+  await expect(opacity).toHaveValue("40");
+  await expect
+    .poll(
+      async () =>
+        (await tauriMock.getInvokeCalls())
+          .filter((call) => call.cmd === "set_cover_art_backdrop_style")
+          .at(-1)?.args,
+    )
+    .toEqual({ blurPx: 40, opacityPercent: null });
 });

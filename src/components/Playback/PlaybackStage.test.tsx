@@ -8,11 +8,17 @@ import { PlaybackStage } from "./PlaybackStage";
 import type { Song } from "@/types/ipc";
 
 const {
+  mockSettingsState,
   mockCdgState,
   mockPlayerState,
   mockLibraryState,
   mockGetCoverArtPreview,
 } = vi.hoisted(() => ({
+  mockSettingsState: {
+    coverArtBackdrop: true,
+    coverArtBackdropBlurPx: 40,
+    coverArtBackdropOpacityPercent: null as number | null,
+  },
   mockCdgState: { hasCdg: false },
   mockPlayerState: {
     snapshot: {
@@ -86,8 +92,8 @@ const backend = createMockBackend({
 });
 
 vi.mock("@/stores/settings-store", () => ({
-  useSettingsStore: (selector: (s: { coverArtBackdrop: boolean }) => unknown) =>
-    selector({ coverArtBackdrop: true }),
+  useSettingsStore: (selector: (s: typeof mockSettingsState) => unknown) =>
+    selector(mockSettingsState),
 }));
 
 vi.mock("@/stores/catalog-store", () => ({
@@ -148,6 +154,71 @@ describe("PlaybackStage", () => {
     expect(markup).toContain('data-native-stage-backdrop="true"');
     expect(markup).toContain("blob:stage-cover");
     expect(markup).toContain("lyrics-panel");
+  });
+
+  test("style edits preserve the lyrics viewport and cover all opacity and blur endpoints", async () => {
+    mockCdgState.hasCdg = false;
+    mockLibraryState.songs = [
+      {
+        ...mockLibraryState.songs[0],
+        hash: "style-song",
+        cdg_path: null,
+        media_g_container: null,
+        cover_art: [255],
+        has_cover_art: true,
+      },
+    ];
+    mockPlayerState.snapshot = { song_id: "style-song" };
+    const container = document.createElement("div");
+    const root = createRoot(container);
+    try {
+      await act(async () => {
+        root.render(<PlaybackStage />);
+      });
+      const viewport = container.querySelector<HTMLElement>(
+        "[data-testid='lyrics-scroll-viewport']",
+      )!;
+      viewport.scrollTop = 123;
+      for (const [blur, opacity] of [
+        [0, 0],
+        [80, 100],
+        [40, null],
+      ] as const) {
+        mockSettingsState.coverArtBackdropBlurPx = blur;
+        mockSettingsState.coverArtBackdropOpacityPercent = opacity;
+        await act(async () => {
+          root.render(<PlaybackStage />);
+        });
+        const image = container.querySelector<HTMLElement>(
+          "[data-native-stage-backdrop] > div",
+        )!;
+        expect(image.style.filter).toContain(`blur(${blur}px)`);
+        expect(image.style.opacity).toBe(
+          opacity === null
+            ? "var(--ambience-backdrop-opacity)"
+            : String(opacity / 100),
+        );
+        expect(Number.parseFloat(image.style.inset)).toBeLessThanOrEqual(
+          -blur * 3,
+        );
+        expect(
+          container.querySelector("[data-testid='lyrics-scroll-viewport']"),
+        ).toBe(viewport);
+        expect(viewport.scrollTop).toBe(123);
+      }
+      await act(async () => {
+        root.render(<PlaybackStage presentation="audience" />);
+      });
+      expect(
+        container.querySelector("[data-native-stage-backdrop]"),
+      ).toBeNull();
+    } finally {
+      mockSettingsState.coverArtBackdropBlurPx = 40;
+      mockSettingsState.coverArtBackdropOpacityPercent = null;
+      await act(async () => {
+        root.unmount();
+      });
+    }
   });
 
   test("keeps an empty lyric stage bright when no cover art is available", () => {

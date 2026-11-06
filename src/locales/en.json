@@ -707,7 +707,11 @@
     },
     "coverArtBackdrop": {
       "hide": "Disable blurred album art backdrop",
-      "description": "Removes the blurred album cover behind lyrics."
+      "description": "Removes the blurred album cover behind lyrics.",
+      "blur": "Blur",
+      "opacity": "Opacity",
+      "opacityDescription": "Lower values make the background more transparent.",
+      "reset": "Restore defaults"
     },
     "appearance": {
       "label": "Appearance",

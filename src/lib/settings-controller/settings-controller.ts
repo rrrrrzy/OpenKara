@@ -406,6 +406,8 @@ export function createSettingsController({
       executionProvider,
       hideBatchSeparate,
       coverArtBackdrop,
+      coverArtBackdropBlurPx,
+      coverArtBackdropOpacityPercent,
       lyricsBlurInactive,
       autoUpdateLyrics,
       hideUpgradeAll,
@@ -443,6 +445,20 @@ export function createSettingsController({
       await writeOptimisticPreference({ hideBatchSeparate }, () =>
         backend.settings.setHideBatchSeparate(hideBatchSeparate),
       );
+    }
+
+    if (
+      coverArtBackdropBlurPx !== undefined ||
+      coverArtBackdropOpacityPercent !== undefined
+    ) {
+      const current = stores.preferences.getSnapshot();
+      stores.preferences.setCoverArtBackdropStyle(
+        coverArtBackdropBlurPx ?? current.coverArtBackdropBlurPx,
+        coverArtBackdropOpacityPercent !== undefined
+          ? coverArtBackdropOpacityPercent
+          : current.coverArtBackdropOpacityPercent,
+      );
+      syncStores();
     }
 
     if (coverArtBackdrop !== undefined) {
@@ -885,6 +901,8 @@ export function createSettingsController({
 
     preferences: {
       set: setPreferences,
+      flushCoverArtBackdropStyle: () =>
+        stores.preferences.flushCoverArtBackdropStyle(),
 
       selectModelVariant: async (variant) => {
         if (

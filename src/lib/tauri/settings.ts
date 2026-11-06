@@ -42,6 +42,12 @@ export function createSettingsCommands(invoke: InvokeCommand): SettingsBackend {
     setHideBatchSeparate: (value) =>
       invoke<AppSettings>("set_hide_batch_separate", { value }),
 
+    setCoverArtBackdropStyle: (blurPx, opacityPercent) =>
+      invoke<AppSettings>("set_cover_art_backdrop_style", {
+        blurPx,
+        opacityPercent,
+      }),
+
     setCoverArtBackdrop: (value) =>
       invoke<AppSettings>("set_cover_art_backdrop", { value }),
 

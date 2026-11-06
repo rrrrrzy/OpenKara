@@ -22,6 +22,8 @@ export interface AppSettingsSnapshot {
   language: string | null;
   hideBatchSeparate: boolean;
   coverArtBackdrop: boolean;
+  coverArtBackdropBlurPx: number;
+  coverArtBackdropOpacityPercent: number | null;
   lyricsBlurInactive: boolean;
   autoUpdateLyrics: boolean;
   hideUpgradeAll: boolean;
@@ -47,6 +49,10 @@ interface SettingsState {
   language: AppSettingsSnapshot["language"];
   hideBatchSeparate: AppSettingsSnapshot["hideBatchSeparate"];
   coverArtBackdrop: AppSettingsSnapshot["coverArtBackdrop"];
+  coverArtBackdropBlurPx: AppSettingsSnapshot["coverArtBackdropBlurPx"];
+  coverArtBackdropOpacityPercent: AppSettingsSnapshot["coverArtBackdropOpacityPercent"];
+  setCoverArtBackdropStyle(blurPx: number, opacityPercent: number | null): void;
+  flushCoverArtBackdropStyle(): Promise<void>;
   lyricsBlurInactive: AppSettingsSnapshot["lyricsBlurInactive"];
   autoUpdateLyrics: AppSettingsSnapshot["autoUpdateLyrics"];
   hideUpgradeAll: AppSettingsSnapshot["hideUpgradeAll"];
@@ -93,6 +99,8 @@ export const DEFAULT_APP_SETTINGS: AppSettingsSnapshot = {
   language: null,
   hideBatchSeparate: false,
   coverArtBackdrop: true,
+  coverArtBackdropBlurPx: 40,
+  coverArtBackdropOpacityPercent: null,
   lyricsBlurInactive: false,
   autoUpdateLyrics: true,
   hideUpgradeAll: false,
@@ -118,6 +126,9 @@ function toAppSettingsSnapshot(settings: AppSettings): AppSettingsSnapshot {
     language: settings.language,
     hideBatchSeparate: settings.hide_batch_separate,
     coverArtBackdrop: settings.cover_art_backdrop,
+    coverArtBackdropBlurPx: settings.cover_art_backdrop_blur_px ?? 40,
+    coverArtBackdropOpacityPercent:
+      settings.cover_art_backdrop_opacity_percent ?? null,
     lyricsBlurInactive: settings.lyrics_blur_inactive ?? false,
     autoUpdateLyrics: settings.auto_update_lyrics ?? true,
     hideUpgradeAll: settings.hide_upgrade_all,
@@ -146,6 +157,8 @@ function selectAppSettingsSnapshot(
     language: state.language,
     hideBatchSeparate: state.hideBatchSeparate,
     coverArtBackdrop: state.coverArtBackdrop,
+    coverArtBackdropBlurPx: state.coverArtBackdropBlurPx,
+    coverArtBackdropOpacityPercent: state.coverArtBackdropOpacityPercent,
     lyricsBlurInactive: state.lyricsBlurInactive,
     autoUpdateLyrics: state.autoUpdateLyrics,
     hideUpgradeAll: state.hideUpgradeAll,
@@ -187,6 +200,8 @@ function applySettingsSyncSnapshot(
     language: snapshot.language,
     hideBatchSeparate: snapshot.hideBatchSeparate,
     coverArtBackdrop: snapshot.coverArtBackdrop,
+    coverArtBackdropBlurPx: snapshot.coverArtBackdropBlurPx,
+    coverArtBackdropOpacityPercent: snapshot.coverArtBackdropOpacityPercent,
     lyricsBlurInactive: snapshot.lyricsBlurInactive,
     autoUpdateLyrics: snapshot.autoUpdateLyrics,
     hideUpgradeAll: snapshot.hideUpgradeAll,
@@ -283,6 +298,21 @@ export function createSettingsStore(
   backend: Backend = tauriBackend,
 ) {
   const api = backend.settings;
+  type BackdropStyle = Pick<
+    AppSettingsSnapshot,
+    "coverArtBackdropBlurPx" | "coverArtBackdropOpacityPercent"
+  >;
+  let pendingBackdrop: BackdropStyle | null = null;
+  let confirmedBackdrop: BackdropStyle = {
+    coverArtBackdropBlurPx: 40,
+    coverArtBackdropOpacityPercent: null,
+  };
+  let backdropWrite: Promise<void> | null = null;
+  let backdropTimer: ReturnType<typeof setTimeout> | null = null;
+  const backdropStyle = (snapshot: AppSettingsSnapshot): BackdropStyle => ({
+    coverArtBackdropBlurPx: snapshot.coverArtBackdropBlurPx,
+    coverArtBackdropOpacityPercent: snapshot.coverArtBackdropOpacityPercent,
+  });
   const eqEnabledField = createOptimisticField(DEFAULT_APP_SETTINGS.eqEnabled);
   const eqGainsField = createOptimisticField(DEFAULT_APP_SETTINGS.eqGainsDb);
   const crossfadeEnabledField = createOptimisticField(
@@ -303,6 +333,11 @@ export function createSettingsStore(
 
     const syncAppSettings = (settings: AppSettings) => {
       const snapshot = toAppSettingsSnapshot(settings);
+      if (pendingBackdrop || backdropWrite) {
+        Object.assign(snapshot, backdropStyle(get()));
+      } else {
+        confirmedBackdrop = backdropStyle(snapshot);
+      }
       snapshot.eqEnabled = eqEnabledField.reconcileSnapshot(snapshot.eqEnabled);
       snapshot.eqGainsDb = eqGainsField.reconcileSnapshot(snapshot.eqGainsDb);
       snapshot.crossfadeEnabled = crossfadeEnabledField.reconcileSnapshot(
@@ -317,13 +352,61 @@ export function createSettingsStore(
       syncPatch(snapshot);
     };
 
+    const flushCoverArtBackdropStyle = (): Promise<void> => {
+      if (backdropTimer !== null) {
+        clearTimeout(backdropTimer);
+        backdropTimer = null;
+      }
+      if (backdropWrite) return backdropWrite;
+      if (!pendingBackdrop) return Promise.resolve();
+      backdropWrite = (async () => {
+        while (pendingBackdrop) {
+          const next = pendingBackdrop;
+          pendingBackdrop = null;
+          try {
+            const settings = await api.setCoverArtBackdropStyle(
+              next.coverArtBackdropBlurPx,
+              next.coverArtBackdropOpacityPercent,
+            );
+            confirmedBackdrop = backdropStyle(toAppSettingsSnapshot(settings));
+          } catch (error) {
+            notifyError(error);
+          }
+          if (!pendingBackdrop) syncPatch(confirmedBackdrop);
+        }
+      })().finally(() => {
+        backdropWrite = null;
+      });
+      return backdropWrite;
+    };
+
     return {
       isOpen: false,
+      setCoverArtBackdropStyle: (blurPx, opacityPercent) => {
+        if (!pendingBackdrop && !backdropWrite)
+          confirmedBackdrop = backdropStyle(get());
+        pendingBackdrop = {
+          coverArtBackdropBlurPx: blurPx,
+          coverArtBackdropOpacityPercent: opacityPercent,
+        };
+        syncPatch(pendingBackdrop);
+        if (backdropTimer !== null) clearTimeout(backdropTimer);
+        backdropTimer = setTimeout(() => {
+          void flushCoverArtBackdropStyle();
+        }, 150);
+      },
+      flushCoverArtBackdropStyle,
       ...DEFAULT_APP_SETTINGS,
       themePreferenceMutationGeneration: 0,
       updatePolicyMutationGeneration: 0,
-      toggle: () => syncPatch({ isOpen: !get().isOpen }),
-      close: () => syncPatch({ isOpen: false }),
+      toggle: () => {
+        if (get().isOpen) void flushCoverArtBackdropStyle();
+        syncPatch({ isOpen: !get().isOpen });
+      },
+      close: () => {
+        void flushCoverArtBackdropStyle();
+        syncPatch({ isOpen: false });
+      },
       open: () => syncPatch({ isOpen: true }),
       hydrateAppSettings: (settings) => syncAppSettings(settings),
       patchAppSettings: (patch) => syncPatch(patch),
@@ -531,6 +614,9 @@ export function createSettingsStore(
   const unsubscribe = syncChannel.subscribe((snapshot) => {
     applySettingsSyncSnapshot(store.setState, {
       ...snapshot,
+      ...(pendingBackdrop || backdropWrite
+        ? backdropStyle(store.getState())
+        : {}),
       eqEnabled: eqEnabledField.reconcileSnapshot(snapshot.eqEnabled),
       eqGainsDb: eqGainsField.reconcileSnapshot(snapshot.eqGainsDb),
       crossfadeEnabled: crossfadeEnabledField.reconcileSnapshot(
@@ -548,8 +634,13 @@ export function createSettingsStore(
   return {
     store,
     dispose() {
+      const flush = store.getState().flushCoverArtBackdropStyle();
       unsubscribe();
-      syncChannel.close();
+      if (backdropWrite) {
+        void flush.finally(() => syncChannel.close());
+      } else {
+        syncChannel.close();
+      }
     },
   };
 }

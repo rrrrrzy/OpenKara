@@ -434,6 +434,8 @@ describe("settings", () => {
     language: null,
     hide_batch_separate: false,
     cover_art_backdrop: true,
+    cover_art_backdrop_blur_px: 40,
+    cover_art_backdrop_opacity_percent: null,
     lyrics_blur_inactive: false,
     auto_update_lyrics: true,
     hide_upgrade_all: false,
@@ -613,6 +615,15 @@ describe("settings", () => {
       value: false,
     });
     expect(returned).toBe(appSettings);
+  });
+
+  test("setCoverArtBackdropStyle sends both values, including reset null", async () => {
+    mockInvoke.mockResolvedValueOnce(appSettings);
+    expect(await settings.setCoverArtBackdropStyle(40, null)).toBe(appSettings);
+    expect(mockInvoke).toHaveBeenCalledWith("set_cover_art_backdrop_style", {
+      blurPx: 40,
+      opacityPercent: null,
+    });
   });
 
   test("setAutoUpdateLyrics invokes set_auto_update_lyrics", async () => {

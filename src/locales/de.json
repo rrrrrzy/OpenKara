@@ -601,7 +601,11 @@
     },
     "coverArtBackdrop": {
       "hide": "Unscharfen Albumcover-Hintergrund deaktivieren",
-      "description": "Entfernt das unscharfe Albumcover hinter den Liedtexten."
+      "description": "Entfernt das unscharfe Albumcover hinter den Liedtexten.",
+      "blur": "Unschärfe",
+      "opacity": "Deckkraft",
+      "opacityDescription": "Niedrigere Werte machen den Hintergrund transparenter.",
+      "reset": "Standardwerte wiederherstellen"
     },
     "appearance": {
       "label": "Darstellung",

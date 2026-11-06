@@ -37,6 +37,10 @@ export function PlaybackStage({
   );
   const isYoutube = isVideoSourceQueueId(songId ?? "");
   const coverArtBackdrop = useSettingsStore((s) => s.coverArtBackdrop);
+  const backdropBlurPx = useSettingsStore((s) => s.coverArtBackdropBlurPx);
+  const backdropOpacityPercent = useSettingsStore(
+    (s) => s.coverArtBackdropOpacityPercent,
+  );
 
   const [fetchedCoverArt, setFetchedCoverArt] = useState<CoverArtBytes | null>(
     null,
@@ -144,13 +148,17 @@ export function PlaybackStage({
           {stageAmbience ? (
             <div className="absolute inset-0" data-native-stage-backdrop="true">
               <div
-                className="absolute inset-[-6%] scale-[1.06] bg-center bg-cover"
+                className="absolute bg-center bg-cover"
                 style={{
                   ...(nativeBackdropUrl
                     ? { backgroundImage: `url(${nativeBackdropUrl})` }
                     : {}),
-                  opacity: "var(--ambience-backdrop-opacity)",
-                  filter: "var(--ambience-backdrop-filter)",
+                  inset: `-${Math.max(40, backdropBlurPx * 3)}px`,
+                  opacity:
+                    backdropOpacityPercent == null
+                      ? "var(--ambience-backdrop-opacity)"
+                      : backdropOpacityPercent / 100,
+                  filter: `blur(${backdropBlurPx}px) var(--ambience-backdrop-color-filter)`,
                 }}
               />
               <div className="absolute inset-0 bg-[var(--ambience-scrim)]" />

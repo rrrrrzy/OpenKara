@@ -15,6 +15,12 @@ export function createZustandSettingsStores(): SettingsControllerStores {
       hydrate: (settings) =>
         useSettingsStore.getState().hydrateAppSettings(settings),
       patch: (patch) => useSettingsStore.getState().patchAppSettings(patch),
+      setCoverArtBackdropStyle: (blurPx, opacityPercent) =>
+        useSettingsStore
+          .getState()
+          .setCoverArtBackdropStyle(blurPx, opacityPercent),
+      flushCoverArtBackdropStyle: () =>
+        useSettingsStore.getState().flushCoverArtBackdropStyle(),
       setEqEnabled: (enabled) =>
         useSettingsStore.getState().setEqEnabled(enabled),
       setEqGains: (gainsDb) => useSettingsStore.getState().setEqGains(gainsDb),

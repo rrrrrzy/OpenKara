@@ -18,6 +18,8 @@ pub struct AppSettings {
     pub language: Option<String>,
     pub hide_batch_separate: bool,
     pub cover_art_backdrop: bool,
+    pub cover_art_backdrop_blur_px: u8,
+    pub cover_art_backdrop_opacity_percent: Option<u8>,
     pub lyrics_blur_inactive: bool,
     pub auto_update_lyrics: bool,
     pub hide_upgrade_all: bool,
@@ -49,6 +51,10 @@ fn settings_from_config(config: &AppConfig) -> AppSettings {
         language: config.language.clone(),
         hide_batch_separate: config.hide_batch_separate.unwrap_or(false),
         cover_art_backdrop: config.cover_art_backdrop.unwrap_or(true),
+        cover_art_backdrop_blur_px: config.cover_art_backdrop_blur_px.unwrap_or(40).min(80),
+        cover_art_backdrop_opacity_percent: config
+            .cover_art_backdrop_opacity_percent
+            .map(|value| value.min(100)),
         lyrics_blur_inactive: config.lyrics_blur_inactive.unwrap_or(false),
         auto_update_lyrics: config.effective_auto_update_lyrics(),
         hide_upgrade_all: config.hide_upgrade_all.unwrap_or(false),
@@ -226,6 +232,33 @@ pub fn set_cover_art_backdrop(app_handle: AppHandle, value: bool) -> CommandResu
     config.cover_art_backdrop = Some(value);
     config::save_config(&app_data_dir, &config)
         .map_err(|e| internal_error(format!("failed to save config: {e}")))?;
+    Ok(settings_from_config(&config))
+}
+
+#[tauri::command]
+pub fn set_cover_art_backdrop_style(
+    state: State<'_, AppState>,
+    blur_px: u8,
+    opacity_percent: Option<u8>,
+) -> CommandResult<AppSettings> {
+    persist_cover_art_backdrop_style(&state.shell.app_data_dir, blur_px, opacity_percent)
+}
+
+fn persist_cover_art_backdrop_style(
+    app_data_dir: &Path,
+    blur_px: u8,
+    opacity_percent: Option<u8>,
+) -> CommandResult<AppSettings> {
+    if blur_px > 80 || opacity_percent.is_some_and(|value| value > 100) {
+        return Err(internal_error("invalid cover art backdrop style"));
+    }
+    let mut config = config::load_config(app_data_dir)
+        .map_err(|error| internal_error(format!("failed to load config: {error}")))?
+        .unwrap_or_default();
+    config.cover_art_backdrop_blur_px = Some(blur_px);
+    config.cover_art_backdrop_opacity_percent = opacity_percent;
+    config::save_config(app_data_dir, &config)
+        .map_err(|error| internal_error(format!("failed to save config: {error}")))?;
     Ok(settings_from_config(&config))
 }
 
@@ -680,6 +713,60 @@ mod tests {
                 .expect("enable updates")
                 .auto_update_lyrics
         );
+    }
+
+    #[test]
+    fn backdrop_defaults_preserve_legacy_config_and_clamp_invalid_stored_values() {
+        let legacy: AppConfig = serde_json::from_str(r#"{"language":"ja"}"#).unwrap();
+        let settings = settings_from_config(&legacy);
+        assert_eq!(settings.cover_art_backdrop_blur_px, 40);
+        assert_eq!(settings.cover_art_backdrop_opacity_percent, None);
+        let invalid = AppConfig {
+            cover_art_backdrop_blur_px: Some(255),
+            cover_art_backdrop_opacity_percent: Some(255),
+            ..Default::default()
+        };
+        assert_eq!(
+            settings_from_config(&invalid).cover_art_backdrop_blur_px,
+            80
+        );
+        assert_eq!(
+            settings_from_config(&invalid).cover_art_backdrop_opacity_percent,
+            Some(100)
+        );
+    }
+
+    #[test]
+    fn backdrop_style_persists_boundaries_and_reset_without_changing_other_preferences() {
+        let temp = tempfile::tempdir().unwrap();
+        let original = AppConfig {
+            language: Some("ja".to_owned()),
+            cover_art_backdrop: Some(false),
+            ..Default::default()
+        };
+        config::save_config(temp.path(), &original).unwrap();
+        for (blur, opacity) in [(0, Some(0)), (80, Some(100)), (40, None)] {
+            let saved = persist_cover_art_backdrop_style(temp.path(), blur, opacity).unwrap();
+            assert_eq!(saved.cover_art_backdrop_blur_px, blur);
+            assert_eq!(saved.cover_art_backdrop_opacity_percent, opacity);
+            let loaded = config::load_config(temp.path()).unwrap().unwrap();
+            assert_eq!(loaded.cover_art_backdrop_blur_px, Some(blur));
+            assert_eq!(loaded.cover_art_backdrop_opacity_percent, opacity);
+            assert_eq!(loaded.language.as_deref(), Some("ja"));
+            assert_eq!(loaded.cover_art_backdrop, Some(false));
+        }
+    }
+
+    #[test]
+    fn backdrop_style_rejects_invalid_values_without_a_write() {
+        let temp = tempfile::tempdir().unwrap();
+        persist_cover_art_backdrop_style(temp.path(), 30, Some(45)).unwrap();
+        for (blur, opacity) in [(81, None), (40, Some(101)), (255, Some(255))] {
+            assert!(persist_cover_art_backdrop_style(temp.path(), blur, opacity).is_err());
+            let loaded = config::load_config(temp.path()).unwrap().unwrap();
+            assert_eq!(loaded.cover_art_backdrop_blur_px, Some(30));
+            assert_eq!(loaded.cover_art_backdrop_opacity_percent, Some(45));
+        }
     }
 
     #[test]

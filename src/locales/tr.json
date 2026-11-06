@@ -601,7 +601,11 @@
     },
     "coverArtBackdrop": {
       "hide": "Bulanık albüm kapağı arka planını devre dışı bırak",
-      "description": "Sözlerin arkasındaki bulanık albüm kapağını kaldırır."
+      "description": "Sözlerin arkasındaki bulanık albüm kapağını kaldırır.",
+      "blur": "Bulanıklık",
+      "opacity": "Opaklık",
+      "opacityDescription": "Daha düşük değerler arka planı daha saydam yapar.",
+      "reset": "Varsayılanları geri yükle"
     },
     "appearance": {
       "label": "Görünüm",

@@ -601,7 +601,11 @@
     },
     "coverArtBackdrop": {
       "hide": "Nonaktifkan latar sampul album buram",
-      "description": "Menghapus sampul album buram di belakang lirik."
+      "description": "Menghapus sampul album buram di belakang lirik.",
+      "blur": "Keburaman",
+      "opacity": "Opasitas",
+      "opacityDescription": "Nilai yang lebih rendah membuat latar belakang lebih transparan.",
+      "reset": "Pulihkan default"
     },
     "appearance": {
       "label": "Tampilan",

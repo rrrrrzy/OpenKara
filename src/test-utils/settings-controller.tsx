@@ -114,6 +114,10 @@ export function createSettingsHarness({
       subscribe: (listener: () => void) => preferencesStore.subscribe(listener),
       hydrate: preferencesStore.getState().hydrateAppSettings,
       patch: preferencesStore.getState().patchAppSettings,
+      setCoverArtBackdropStyle:
+        preferencesStore.getState().setCoverArtBackdropStyle,
+      flushCoverArtBackdropStyle:
+        preferencesStore.getState().flushCoverArtBackdropStyle,
       setEqEnabled: preferencesStore.getState().setEqEnabled,
       setEqGains: preferencesStore.getState().setEqGains,
       setCrossfadeEnabled: preferencesStore.getState().setCrossfadeEnabled,

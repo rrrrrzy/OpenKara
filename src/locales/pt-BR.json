@@ -602,7 +602,11 @@
     },
     "coverArtBackdrop": {
       "hide": "Desativar o fundo desfocado da capa do álbum",
-      "description": "Remove a capa do álbum desfocada atrás da letra."
+      "description": "Remove a capa do álbum desfocada atrás da letra.",
+      "blur": "Desfoque",
+      "opacity": "Opacidade",
+      "opacityDescription": "Valores menores tornam o fundo mais transparente.",
+      "reset": "Restaurar padrões"
     },
     "appearance": {
       "label": "Aparência",

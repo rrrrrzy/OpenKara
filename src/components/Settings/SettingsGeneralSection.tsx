@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { SUPPORTED_LANGUAGES } from "@/lib/i18n";
 import type { ThemePreference } from "@/types/ipc";
+import { SettingsBackdropControls } from "./SettingsBackdropControls";
 import { SettingsSectionCard } from "./SettingsSectionCard";
 import { useSettings } from "./SettingsController.context";
 
@@ -87,6 +88,7 @@ export function SettingsGeneralSection() {
           <p className="text-[11px] text-[var(--color-text-dim)]">
             {t("settings.coverArtBackdrop.description")}
           </p>
+          <SettingsBackdropControls />
         </div>
 
         <div className="space-y-2 border-t border-[var(--color-border)] pt-4">

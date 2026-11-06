@@ -601,7 +601,11 @@
     },
     "coverArtBackdrop": {
       "hide": "Vervaagde albumhoes-achtergrond uitschakelen",
-      "description": "Verwijdert de vervaagde albumhoes achter de songtekst."
+      "description": "Verwijdert de vervaagde albumhoes achter de songtekst.",
+      "blur": "Vervaging",
+      "opacity": "Dekking",
+      "opacityDescription": "Lagere waarden maken de achtergrond transparanter.",
+      "reset": "Standaardwaarden herstellen"
     },
     "appearance": {
       "label": "Weergave",

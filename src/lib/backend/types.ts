@@ -249,6 +249,10 @@ export interface SettingsBackend {
   setModelVariant(variant: string): Promise<AppSettings>;
   setHideBatchSeparate(value: boolean): Promise<AppSettings>;
   setCoverArtBackdrop(value: boolean): Promise<AppSettings>;
+  setCoverArtBackdropStyle(
+    blurPx: number,
+    opacityPercent: number | null,
+  ): Promise<AppSettings>;
   setLyricsBlurInactive(value: boolean): Promise<AppSettings>;
   setAutoUpdateLyrics(value: boolean): Promise<AppSettings>;
   setHideUpgradeAll(value: boolean): Promise<AppSettings>;

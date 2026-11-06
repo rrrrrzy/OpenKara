@@ -602,7 +602,11 @@
     },
     "coverArtBackdrop": {
       "hide": "Disattiva lo sfondo sfocato della copertina",
-      "description": "Rimuove la copertina dell'album sfocata dietro il testo."
+      "description": "Rimuove la copertina dell'album sfocata dietro il testo.",
+      "blur": "Sfocatura",
+      "opacity": "Opacità",
+      "opacityDescription": "Valori più bassi rendono lo sfondo più trasparente.",
+      "reset": "Ripristina valori predefiniti"
     },
     "appearance": {
       "label": "Aspetto",

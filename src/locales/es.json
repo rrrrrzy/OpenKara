@@ -602,7 +602,11 @@
     },
     "coverArtBackdrop": {
       "hide": "Desactivar el fondo difuminado de la carátula",
-      "description": "Quita la carátula difuminada detrás de la letra."
+      "description": "Quita la carátula difuminada detrás de la letra.",
+      "blur": "Desenfoque",
+      "opacity": "Opacidad",
+      "opacityDescription": "Los valores más bajos hacen que el fondo sea más transparente.",
+      "reset": "Restaurar valores predeterminados"
     },
     "appearance": {
       "label": "Apariencia",

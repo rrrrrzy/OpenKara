@@ -133,6 +133,8 @@ export interface WritablePreferences {
   executionProvider: ExecutionProvider;
   hideBatchSeparate: boolean;
   coverArtBackdrop: boolean;
+  coverArtBackdropBlurPx: number;
+  coverArtBackdropOpacityPercent: number | null;
   lyricsBlurInactive: boolean;
   autoUpdateLyrics: boolean;
   hideUpgradeAll: boolean;
@@ -191,6 +193,7 @@ export interface SettingsPreferenceCommands {
    * reconciled from the store afterwards; the store owns any rollback.
    */
   set(patch: SettingsPreferencePatch): Promise<void>;
+  flushCoverArtBackdropStyle(): Promise<void>;
   /**
    * Applies a separation model, downloading it first when it is missing.
    * Selecting the fine-tuned model from another variant raises its
@@ -241,6 +244,8 @@ export interface SettingsPreferencesStore {
   subscribe(listener: () => void): () => void;
   hydrate(settings: AppSettings): void;
   patch(patch: Partial<AppSettingsSnapshot>): void;
+  setCoverArtBackdropStyle(blurPx: number, opacityPercent: number | null): void;
+  flushCoverArtBackdropStyle(): Promise<void>;
   setEqEnabled(enabled: boolean): Promise<void>;
   setEqGains(gainsDb: [number, number, number, number, number]): Promise<void>;
   setCrossfadeEnabled(enabled: boolean): Promise<void>;
