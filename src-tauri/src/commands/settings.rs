@@ -76,7 +76,7 @@ fn settings_from_config(config: &AppConfig) -> AppSettings {
 }
 
 fn validate_lyrics_font_step(step: i8) -> CommandResult<i8> {
-    if !(-2..=2).contains(&step) {
+    if !(-2..=3).contains(&step) {
         return Err(internal_error(format!("invalid lyrics font step: {step}")));
     }
 
@@ -780,21 +780,21 @@ mod tests {
         let temp_dir = tempfile::tempdir().expect("temp dir should create");
 
         let settings =
-            persist_lyrics_font_step(temp_dir.path(), 2).expect("lyrics font step should persist");
+            persist_lyrics_font_step(temp_dir.path(), 3).expect("lyrics font step should persist");
 
-        assert_eq!(settings.lyrics_font_step, 2);
+        assert_eq!(settings.lyrics_font_step, 3);
 
         let loaded = config::load_config(temp_dir.path())
             .expect("config should load")
             .expect("config should exist after persisting");
-        assert_eq!(loaded.effective_lyrics_font_step(), 2);
+        assert_eq!(loaded.effective_lyrics_font_step(), 3);
     }
 
     #[test]
     fn persist_lyrics_font_step_rejects_out_of_range_values() {
         let temp_dir = tempfile::tempdir().expect("temp dir should create");
 
-        let error = persist_lyrics_font_step(temp_dir.path(), 3)
+        let error = persist_lyrics_font_step(temp_dir.path(), 4)
             .expect_err("out of range lyrics font step should fail");
 
         assert!(error.message.contains("invalid lyrics font step"));

@@ -5,6 +5,9 @@ import {
   CENTERED_ROMAN_FONT_SIZE,
   evaluateCenteredLineFontSizePx,
   getCenteredLineFontSize,
+  getLyricsTextSizeClass,
+  getLyricsSecondaryTextSizeClass,
+  getLyricsRomanTextSizeClass,
   shouldEmphasizeWord,
   wordTokenGap,
 } from "./lyric-line-typography";
@@ -46,6 +49,44 @@ describe("centered focus type scale", () => {
     expect(evaluateCenteredLineFontSizePx(-2, 1920, 1080)).toBeCloseTo(
       48 * 0.76,
       5,
+    );
+  });
+
+  test("XXL enlarges centered lyrics at every supported viewport and clamps higher steps", () => {
+    for (const [width, height] of [
+      [320, 480],
+      [1280, 720],
+      [1920, 1080],
+    ]) {
+      const xxl = evaluateCenteredLineFontSizePx(3, width, height);
+      expect(xxl).toBeCloseTo(
+        evaluateCenteredLineFontSizePx(0, width, height) * 1.42,
+      );
+      expect(xxl).toBeGreaterThan(
+        evaluateCenteredLineFontSizePx(2, width, height),
+      );
+      expect(evaluateCenteredLineFontSizePx(4, width, height)).toBe(xxl);
+    }
+    expect(getCenteredLineFontSize(3)).toBe(
+      `calc(${CENTERED_LINE_FONT_SIZE_BASE} * 1.42)`,
+    );
+  });
+
+  test("XXL increases standard, audience, secondary, and roman type scales", () => {
+    expect(getLyricsTextSizeClass("standard", 3)).toBe(
+      "text-5xl font-semibold tracking-tight md:text-6xl xl:text-7xl",
+    );
+    expect(getLyricsTextSizeClass("audience", 3)).toBe(
+      "text-7xl font-bold tracking-tight md:text-9xl xl:text-9xl",
+    );
+    expect(getLyricsSecondaryTextSizeClass(3)).toBe(
+      "text-2xl md:text-3xl xl:text-4xl",
+    );
+    expect(getLyricsRomanTextSizeClass(3)).toBe(
+      "text-4xl font-medium tracking-tight md:text-5xl xl:text-6xl",
+    );
+    expect(getLyricsTextSizeClass("standard", 4)).toBe(
+      getLyricsTextSizeClass("standard", 3),
     );
   });
 

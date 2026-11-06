@@ -19,6 +19,7 @@ vi.mock("react-i18next", () => ({
         "lyrics.fontSizeMedium": "M",
         "lyrics.fontSizeLarge": "L",
         "lyrics.fontSizeExtraLarge": "XL",
+        "lyrics.fontSizeExtraExtraLarge": "XXL",
         "lyrics.fontSizeDecreaseShort": "A-",
         "lyrics.fontSizeIncreaseShort": "A+",
       })[key] ?? key,
@@ -68,6 +69,11 @@ describe("LyricsFontSizeControl", () => {
     expect(markup).toContain(">XL<");
   });
 
+  test("displays XXL at font step 3", () => {
+    mockSettingsState.lyricsFontStep = 3;
+    expect(renderToStaticMarkup(<LyricsFontSizeControl />)).toContain(">XXL<");
+  });
+
   test("highlights the step label with the control-primary color when non-default", () => {
     mockSettingsState.lyricsFontStep = 1;
 
@@ -85,8 +91,8 @@ describe("LyricsFontSizeControl", () => {
   test("renders accessible labels for the decrease, increase, and reset buttons", () => {
     const markup = renderToStaticMarkup(<LyricsFontSizeControl />);
 
-    expect(markup).toContain("lyrics.fontSizeDecrease");
-    expect(markup).toContain("lyrics.fontSizeIncrease");
+    expect(markup).toContain('aria-label="A- lyrics.fontSizeDecrease"');
+    expect(markup).toContain('aria-label="A+ lyrics.fontSizeIncrease"');
     expect(markup).toContain("lyrics.fontSizeReset");
   });
 });

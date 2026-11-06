@@ -48,10 +48,11 @@ const AUDIENCE_FONT_SIZE_BY_STEP = {
   [0]: 72,
   [1]: 96,
   [2]: 96,
+  [3]: 128,
 } as const;
 
-function clampLyricsFontStep(step: number): -2 | -1 | 0 | 1 | 2 {
-  return Math.max(-2, Math.min(2, step)) as -2 | -1 | 0 | 1 | 2;
+function clampLyricsFontStep(step: number): -2 | -1 | 0 | 1 | 2 | 3 {
+  return Math.max(-2, Math.min(3, step)) as -2 | -1 | 0 | 1 | 2 | 3;
 }
 
 export function buildAudiencePresentationSpec(

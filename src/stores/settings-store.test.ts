@@ -147,6 +147,11 @@ describe("settings-store sync", () => {
     primary.store.getState().open();
 
     expect(secondary.store.getState().isOpen).toBe(true);
+    mockSetLyricsFontStep.mockResolvedValueOnce(
+      makeAppSettings({ lyrics_font_step: 3 }),
+    );
+    await primary.store.getState().setLyricsFontStep(3);
+    expect(secondary.store.getState().lyricsFontStep).toBe(3);
     primary.store.getState().patchAppSettings({ autoUpdateLyrics: false });
     expect(secondary.store.getState().autoUpdateLyrics).toBe(false);
 
@@ -329,13 +334,49 @@ describe("settings-store actions", () => {
     expect(store.getState().lyricsFontStep).toBe(1);
   });
 
-  test("adjustLyricsFontStep clamps to upper bound of 2", async () => {
+  test("XL can increase to XXL and decrease back to XL", async () => {
     store.setState({ lyricsFontStep: 2 });
+    mockSetLyricsFontStep.mockResolvedValueOnce(
+      makeAppSettings({ lyrics_font_step: 3 }),
+    );
+    await store.getState().adjustLyricsFontStep(1);
+    expect(mockSetLyricsFontStep).toHaveBeenLastCalledWith(3);
+    expect(store.getState().lyricsFontStep).toBe(3);
+    mockSetLyricsFontStep.mockResolvedValueOnce(
+      makeAppSettings({ lyrics_font_step: 2 }),
+    );
+    await store.getState().adjustLyricsFontStep(-1);
+    expect(store.getState().lyricsFontStep).toBe(2);
+  });
+
+  test("XXL persists through hydration and resets to medium", async () => {
+    const freshBackend = createMockBackend();
+    const first = createSettingsStore(undefined, freshBackend);
+    const reloaded = createSettingsStore(undefined, freshBackend);
+    try {
+      await first.store.getState().setLyricsFontStep(3);
+      reloaded.store
+        .getState()
+        .hydrateAppSettings(await freshBackend.settings.getSettings());
+      expect(reloaded.store.getState().lyricsFontStep).toBe(3);
+      await reloaded.store.getState().resetLyricsFontStep();
+      expect(reloaded.store.getState().lyricsFontStep).toBe(0);
+      expect((await freshBackend.settings.getSettings()).lyrics_font_step).toBe(
+        0,
+      );
+    } finally {
+      first.dispose();
+      reloaded.dispose();
+    }
+  });
+
+  test("adjustLyricsFontStep clamps to upper bound of 3", async () => {
+    store.setState({ lyricsFontStep: 3 });
 
     await store.getState().adjustLyricsFontStep(1);
 
     expect(mockSetLyricsFontStep).not.toHaveBeenCalled();
-    expect(store.getState().lyricsFontStep).toBe(2);
+    expect(store.getState().lyricsFontStep).toBe(3);
   });
 
   test("adjustLyricsFontStep clamps to lower bound of -2", async () => {

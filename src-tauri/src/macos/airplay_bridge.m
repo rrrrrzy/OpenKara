@@ -134,7 +134,7 @@ static CGFloat OKClamp(CGFloat value, CGFloat minValue, CGFloat maxValue) {
 }
 
 static CGFloat OKFontSizeForStep(NSInteger step) {
-    switch ((int)OKClamp(step, -2, 2)) {
+    switch ((int)OKClamp(step, -2, 3)) {
     case -2:
         return 44.0;
     case -1:
@@ -143,6 +143,8 @@ static CGFloat OKFontSizeForStep(NSInteger step) {
         return 82.0;
     case 2:
         return 96.0;
+    case 3:
+        return 128.0;
     default:
         return 68.0;
     }

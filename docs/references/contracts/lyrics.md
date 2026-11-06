@@ -225,7 +225,7 @@ See [settings.md](./settings.md#automatic-online-lyrics-updates).
 
 **Semantics**
 
-1. `step` 是全局歌词字号档位，允许值固定为 `-2..2`
+1. `step` 是全局歌词字号档位，允许值固定为 `-2..3`；`3` 对应 XXL
 2. 该命令将字号档位持久化到应用 `config.json`
 3. 该命令不会修改 SQLite `lyrics` 表，也不会影响歌词抓取或 timing offset
 4. 超出范围时命令返回 `CommandError`

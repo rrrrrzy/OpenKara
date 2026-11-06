@@ -1,7 +1,7 @@
 import type { LyricLine } from "@/types/ipc";
 import type { LyricsPresentation } from "./lyrics-panel-model";
 
-type FontStep = -2 | -1 | 0 | 1 | 2;
+type FontStep = -2 | -1 | 0 | 1 | 2 | 3;
 
 const STANDARD_SEEKABLE_HOVER_CLASS =
   "relative transition-[color,transform,text-shadow] duration-300 ease-out group-hover/line:text-[var(--color-lyrics-active)] group-hover/line:-translate-y-px group-hover/line:[text-shadow:var(--shadow-lyrics-hover)]";
@@ -15,6 +15,7 @@ const STANDARD_TEXT_SIZE_CLASSES = {
   [0]: "text-2xl font-semibold tracking-tight md:text-3xl",
   [1]: "text-3xl font-semibold tracking-tight md:text-4xl xl:text-5xl",
   [2]: "text-4xl font-semibold tracking-tight md:text-5xl xl:text-6xl",
+  [3]: "text-5xl font-semibold tracking-tight md:text-6xl xl:text-7xl",
 } as const;
 
 const AUDIENCE_TEXT_SIZE_CLASSES = {
@@ -23,6 +24,7 @@ const AUDIENCE_TEXT_SIZE_CLASSES = {
   [0]: "text-4xl font-bold tracking-tight md:text-6xl xl:text-7xl",
   [1]: "text-5xl font-bold tracking-tight md:text-7xl xl:text-8xl",
   [2]: "text-6xl font-bold tracking-tight md:text-8xl xl:text-8xl",
+  [3]: "text-7xl font-bold tracking-tight md:text-9xl xl:text-9xl",
 } as const;
 
 const STANDARD_SECONDARY_TEXT_SIZE_CLASSES = {
@@ -31,6 +33,7 @@ const STANDARD_SECONDARY_TEXT_SIZE_CLASSES = {
   [0]: "text-sm md:text-base",
   [1]: "text-base md:text-lg xl:text-2xl",
   [2]: "text-lg md:text-2xl xl:text-3xl",
+  [3]: "text-2xl md:text-3xl xl:text-4xl",
 } as const;
 
 export const LEFT_ROMAN_GRID_CLASS =
@@ -42,6 +45,7 @@ const LEFT_ROMAN_TEXT_SIZE_CLASSES = {
   [0]: "text-xl font-medium tracking-tight md:text-2xl",
   [1]: "text-2xl font-medium tracking-tight md:text-3xl xl:text-4xl",
   [2]: "text-3xl font-medium tracking-tight md:text-4xl xl:text-5xl",
+  [3]: "text-4xl font-medium tracking-tight md:text-5xl xl:text-6xl",
 } as const;
 
 const CENTERED_LINE_FONT_STEP_SCALE = {
@@ -50,6 +54,7 @@ const CENTERED_LINE_FONT_STEP_SCALE = {
   [0]: 1,
   [1]: 1.14,
   [2]: 1.28,
+  [3]: 1.42,
 } as const;
 
 export const CENTERED_LINE_FONT_SIZE_BASE =
@@ -63,7 +68,7 @@ export const CENTERED_LINE_FONT_WEIGHT = 600;
 export const STANDARD_LINE_FONT_WEIGHT = 500;
 
 function clampStep(lyricsFontStep: number): FontStep {
-  return Math.max(-2, Math.min(2, lyricsFontStep)) as FontStep;
+  return Math.max(-2, Math.min(3, lyricsFontStep)) as FontStep;
 }
 
 export function getLyricsTextSizeClass(

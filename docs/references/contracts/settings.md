@@ -18,7 +18,7 @@ Field or command semantic changes must update this document before changing UI c
 | `lyrics_blur_inactive` | `boolean` | Blur past and upcoming lyric lines. Default `false` so singers can read ahead. |
 | `auto_update_lyrics` | `boolean` | Allow automatic online updates of eligible existing lyrics. Default `true`. |
 | `hide_upgrade_all` | `boolean` | Hide "Upgrade All to 4-stem" action in UI |
-| `lyrics_font_step` | `i8` | Range `[-2, 2]`, 0 = default |
+| `lyrics_font_step` | `i8` | Range `[-2, 3]`, 0 = default, 3 = XXL |
 | `execution_provider` | `string` | Active ONNX Runtime execution provider. When unset, OpenKara selects a runtime provider only when the current target and host capability support it; otherwise it selects CPU. Apple Silicon uses CoreML, Windows uses DirectML only with a usable D3D12 hardware adapter, and Intel macOS/Linux use the measured CPU default. |
 | `available_execution_providers` | `Vec<string>` | Provider choices for the current target. A choice can be present but incompatible with the current host. |
 | `compatible_execution_providers` | `Vec<string>` | Provider choices that the current host can use. CPU is always present. If `execution_provider` is not in this list, the Settings screen marks it and asks the user to switch to CPU. Separation rejects that explicit choice with `execution_provider_unavailable`. |

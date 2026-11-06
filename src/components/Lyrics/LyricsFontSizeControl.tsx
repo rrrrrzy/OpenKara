@@ -14,6 +14,8 @@ function fontSizeStepKey(step: number) {
       return "lyrics.fontSizeLarge";
     case 2:
       return "lyrics.fontSizeExtraLarge";
+    case 3:
+      return "lyrics.fontSizeExtraExtraLarge";
     default:
       return "lyrics.fontSizeMedium";
   }
@@ -37,7 +39,7 @@ export function LyricsFontSizeControl({
         type="button"
         onClick={() => void adjustLyricsFontStep(-1)}
         className="motion-surface rounded-full border border-[var(--color-border-light)] px-2.5 py-1 font-medium hover:border-[color-mix(in_srgb,var(--color-accent)_28%,var(--color-border-light))] hover:bg-[color-mix(in_srgb,var(--color-hover)_72%,transparent)] hover:text-[var(--color-text)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]/50"
-        aria-label={t("lyrics.fontSizeDecrease")}
+        aria-label={`${t("lyrics.fontSizeDecreaseShort")} ${t("lyrics.fontSizeDecrease")}`}
       >
         {t("lyrics.fontSizeDecreaseShort")}
       </button>
@@ -56,7 +58,7 @@ export function LyricsFontSizeControl({
         type="button"
         onClick={() => void adjustLyricsFontStep(1)}
         className="motion-surface rounded-full border border-[var(--color-border-light)] px-2.5 py-1 font-medium hover:border-[color-mix(in_srgb,var(--color-accent)_28%,var(--color-border-light))] hover:bg-[color-mix(in_srgb,var(--color-hover)_72%,transparent)] hover:text-[var(--color-text)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]/50"
-        aria-label={t("lyrics.fontSizeIncrease")}
+        aria-label={`${t("lyrics.fontSizeIncreaseShort")} ${t("lyrics.fontSizeIncrease")}`}
       >
         {t("lyrics.fontSizeIncreaseShort")}
       </button>

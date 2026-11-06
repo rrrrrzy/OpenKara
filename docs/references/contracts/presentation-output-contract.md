@@ -144,7 +144,7 @@ null
 2. 该命令是配置同步，不是运行时节拍同步；前端只提供 `songId / lines / offsetMs / isLoading / lyricsFontStep / messages / viewport / presentationSpec`
 3. backend 保存最新配置，并由自己的 coordinator 读取真实播放状态，计算当前歌词行/单词高亮和 CDG 帧，再同步到原生 AirPlay bridge。Bridge word token 保留 `timeMs`、`text` 和可空 `roman`。
 4. `messages` 提供无歌、加载中、无歌词等 audience 空状态所需的本地化文案；AirPlay 电视端只显示弱化文本提示，不再渲染按钮式空状态卡片
-5. `presentationSpec` 固定了 audience 内容区宽度、字号、行距、颜色和 glow；本地 `fullscreen-player` audience 输出与 AirPlay 必须共用这套显式 spec，不能各自维护一套样式
+5. `presentationSpec` 固定了 audience 内容区宽度、字号、行距、颜色和 glow；本地 `fullscreen-player` audience 输出与 AirPlay 必须共用这套显式 spec，不能各自维护一套样式。`lyricsFontStep` 范围为 `-2..3`，`3` 对应 XXL，`presentationSpec.fontSizePx` 为 128px；原生回退映射同样支持该档位
 6. `viewport` 当前固定为 `1280x720`，对应 backend HLS 视频编码参考尺寸
 7. backend 从本机混音输出 tap 获取音频 PCM，并写入 `audience-video.m3u8` 音视频 HLS；当前 AirPlay audience 输出只支持电视/Apple TV 这类视频接收端
 8. HomePod 这类 audio-only AirPlay 路由当前不支持；不要把观众屏幕的音视频 HLS 或任何自造 route 预测逻辑继续扩展到这类设备，未来若支持需单独设计并验证

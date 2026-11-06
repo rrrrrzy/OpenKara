@@ -420,7 +420,7 @@ export function createSettingsStore(
       },
       adjustLyricsFontStep: async (delta) => {
         const current = get().lyricsFontStep;
-        const nextStep = Math.max(-2, Math.min(2, current + delta));
+        const nextStep = Math.max(-2, Math.min(3, current + delta));
         if (nextStep === current) {
           return;
         }

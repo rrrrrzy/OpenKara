@@ -184,27 +184,33 @@ describe("LyricLine", () => {
     expect(markup).toContain("--dark-mask-alpha");
   });
 
-  test("uses the configured font scale without changing the lyric state logic", () => {
-    const markup = renderToStaticMarkup(
-      <LyricLine
-        lineIndex={0}
-        line={{
-          time_ms: 1000,
-          text: "scaled line",
-          words: null,
-          bg_words: null,
-          section: null,
-          roman: null,
-        }}
-        state="active"
-        presentation="audience"
-        lyricsFontStep={2}
-      />,
-    );
+  test.each([
+    [2, 96],
+    [3, 128],
+  ])(
+    "uses font step %i without changing the lyric state logic",
+    (step, size) => {
+      const markup = renderToStaticMarkup(
+        <LyricLine
+          lineIndex={0}
+          line={{
+            time_ms: 1000,
+            text: "scaled line",
+            words: null,
+            bg_words: null,
+            section: null,
+            roman: null,
+          }}
+          state="active"
+          presentation="audience"
+          lyricsFontStep={step}
+        />,
+      );
 
-    expect(markup).toContain("font-size:96px");
-    expect(markup).toContain("color:rgba(255, 255, 255, 1)");
-  });
+      expect(markup).toContain(`font-size:${size}px`);
+      expect(markup).toContain("color:rgba(255, 255, 255, 1)");
+    },
+  );
 
   test("renders bg_words with slide-in styles when line is active", () => {
     const markup = renderToStaticMarkup(

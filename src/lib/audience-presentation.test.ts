@@ -15,11 +15,12 @@ describe("buildAudiencePresentationSpec", () => {
     expect(buildAudiencePresentationSpec(-1).fontSizePx).toBe(60);
     expect(buildAudiencePresentationSpec(1).fontSizePx).toBe(96);
     expect(buildAudiencePresentationSpec(2).fontSizePx).toBe(96);
+    expect(buildAudiencePresentationSpec(3).fontSizePx).toBe(128);
   });
 
   test("clamps out-of-range steps", () => {
     expect(buildAudiencePresentationSpec(-10).fontSizePx).toBe(48);
-    expect(buildAudiencePresentationSpec(10).fontSizePx).toBe(96);
+    expect(buildAudiencePresentationSpec(10).fontSizePx).toBe(128);
   });
 
   test("includes all required layout properties", () => {

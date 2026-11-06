@@ -15,6 +15,7 @@ vi.mock("@tauri-apps/api/event", () => ({
   listen: vi.fn(async () => vi.fn()),
 }));
 
+import { buildAudiencePresentationSpec } from "@/lib/audience-presentation";
 import { useAudiencePlainTextPaging } from "./use-audience-plain-text-paging";
 
 const line = (time_ms: number, text: string) => ({
@@ -97,9 +98,11 @@ describe("useAudiencePlainTextPaging layoutVersion invalidation", () => {
   let container: HTMLDivElement;
   let root: Root;
   let lineHeights: number[] = [];
+  let viewportHeight = 100;
 
   beforeEach(() => {
     lineHeights = [];
+    viewportHeight = 100;
     class MockResizeObserver {
       observe(_target: Element) {}
       disconnect() {}
@@ -146,7 +149,7 @@ describe("useAudiencePlainTextPaging layoutVersion invalidation", () => {
       configurable: true,
       get(this: HTMLElement) {
         if (this.getAttribute("data-testid") === "container") {
-          return 100;
+          return viewportHeight;
         }
         return 0;
       },
@@ -166,6 +169,33 @@ describe("useAudiencePlainTextPaging layoutVersion invalidation", () => {
   afterEach(() => {
     act(() => root.unmount());
     container.remove();
+  });
+
+  test("XL to XXL remeasures plain text pages at the larger audience font size", async () => {
+    viewportHeight = 500;
+    const lines = [
+      line(0, "one"),
+      line(0, "two"),
+      line(0, "three"),
+      line(0, "four"),
+    ];
+    const lineHeight = (step: number) => {
+      const spec = buildAudiencePresentationSpec(step);
+      return Math.ceil(spec.fontSizePx * spec.lineHeightMultiple);
+    };
+    lineHeights = lines.map(() => lineHeight(2));
+    harnessArgs = { lines, layoutVersion: "false:", pageIdentity: "song:2" };
+    await act(async () => {
+      root.render(<Harness />);
+    });
+    expect(lastResult!.pageStartIndices).toEqual([0]);
+    lineHeights = lines.map(() => lineHeight(3));
+    harnessArgs = { ...harnessArgs, pageIdentity: "song:3" };
+    await act(async () => {
+      root.render(<Harness />);
+    });
+    expect(lastResult!.pageStartIndices).toEqual([0, 3]);
+    expect(lastResult!.visibleLines).toHaveLength(3);
   });
 
   test("enabling romanized text invalidates measurement and produces updated page boundaries", async () => {

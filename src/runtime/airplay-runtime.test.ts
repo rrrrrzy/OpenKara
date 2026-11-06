@@ -108,7 +108,7 @@ describe("buildAirPlayAudienceState", () => {
         ],
         offsetMs: 100,
         isLoading: false,
-        lyricsFontStep: 2,
+        lyricsFontStep: 3,
         hasCdg: false,
         currentSongHasCdg: false,
         messages: {
@@ -133,7 +133,7 @@ describe("buildAirPlayAudienceState", () => {
       ],
       offsetMs: 100,
       isLoading: false,
-      lyricsFontStep: 2,
+      lyricsFontStep: 3,
       messages: {
         selectSong: "Select a song to start",
         loadingLyrics: "Loading lyrics...",
@@ -146,7 +146,7 @@ describe("buildAirPlayAudienceState", () => {
         bottom_inset_px: 0,
       },
       presentationSpec: {
-        fontSizePx: 96,
+        fontSizePx: 128,
         contentWidthRatio: 0.92,
         contentMaxWidthPx: 1600,
       },
