@@ -88,6 +88,23 @@ export function SettingsGeneralSection() {
           <p className="text-[11px] text-[var(--color-text-dim)]">
             {t("settings.coverArtBackdrop.description")}
           </p>
+          <label className="flex min-h-6 items-center gap-3">
+            <input
+              type="checkbox"
+              checked={settings.audienceCoverArtBackdrop}
+              tabIndex={0}
+              onChange={(event) =>
+                void preferences.set({
+                  audienceCoverArtBackdrop: event.target.checked,
+                })
+              }
+              disabled={isInitializing}
+              className="h-4 w-4 rounded border-[var(--color-border-light)] bg-[var(--color-surface)] accent-[var(--color-accent)]"
+            />
+            <span className="text-[13px] text-[var(--color-text)]">
+              {t("settings.coverArtBackdrop.showOnAudienceDisplay")}
+            </span>
+          </label>
           <SettingsBackdropControls />
         </div>
 

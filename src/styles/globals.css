@@ -82,15 +82,6 @@
     --color-on-accent: #151618;
     --color-on-media: #ffffff;
     --color-scrim: rgba(0, 0, 0, 0.5);
-    /*
-     * Ambience backdrop tokens for the blurred cover-art behind standard-mode
-     * lyrics. Kept separate from --color-scrim (which is shared with
-     * dialogs/popovers) so the ambience layer can be tuned independently to
-     * keep the cover visible while preserving lyric contrast.
-     */
-    --ambience-scrim: rgba(0, 0, 0, 0.5);
-    --ambience-backdrop-opacity: 0.4;
-    --ambience-backdrop-color-filter: saturate(0.85) brightness(0.75);
     --color-lyrics-active: #ffffff;
     --color-lyrics-past: rgba(255, 255, 255, 0.45);
     --color-lyrics-future: rgba(255, 255, 255, 0.5);
@@ -156,15 +147,6 @@
     --color-on-accent: #ffffff;
     --color-on-media: #ffffff;
     --color-scrim: rgba(255, 255, 255, 0.76);
-    /*
-     * Light ambience: lift the cover slightly so dark lyric text stays
-     * readable, and use a lighter scrim than the dark theme so the blurred
-     * cover art remains visible behind the lyrics. The dark theme darkens the
-     * cover; the light theme brightens it.
-     */
-    --ambience-scrim: rgba(255, 255, 255, 0.5);
-    --ambience-backdrop-opacity: 0.55;
-    --ambience-backdrop-color-filter: saturate(0.85) brightness(1.05);
     --color-lyrics-active: #16171a;
     --color-lyrics-past: rgba(29, 29, 31, 0.42);
     --color-lyrics-future: rgba(29, 29, 31, 0.48);
@@ -207,6 +189,28 @@
     --scrollbar-thumb-hover: #858a94;
     --scrollbar-thumb-active: #666b74;
     --scrollbar-track: transparent;
+  }
+
+  /* Share the cover treatment with the local audience lyrics stage. */
+  :root,
+  :root[data-theme="dark"],
+  [data-audience-backdrop-theme="dark"] {
+    --ambience-surface: #121212;
+    --ambience-scrim: rgba(0, 0, 0, 0.5);
+    --ambience-backdrop-opacity: 0.4;
+    --ambience-backdrop-color-filter: saturate(0.85) brightness(0.75);
+  }
+
+  :root[data-theme="light"],
+  [data-audience-backdrop-theme="light"] {
+    --ambience-surface: #ffffff;
+    --ambience-scrim: rgba(255, 255, 255, 0.5);
+    --ambience-backdrop-opacity: 0.55;
+    --ambience-backdrop-color-filter: saturate(0.85) brightness(1.05);
+  }
+
+  [data-audience-backdrop-theme] {
+    background-color: var(--ambience-surface);
   }
 
   /*

@@ -601,6 +601,7 @@
       "description": "Verberg de zijbalkknop die alle nummers scheidt."
     },
     "coverArtBackdrop": {
+      "showOnAudienceDisplay": "Albumhoes als achtergrond op het publieksscherm tonen",
       "hide": "Vervaagde albumhoes-achtergrond uitschakelen",
       "description": "Verwijdert de vervaagde albumhoes achter de songtekst.",
       "blur": "Vervaging",
@@ -610,7 +611,7 @@
     },
     "appearance": {
       "label": "Weergave",
-      "description": "Kies het kleurenschema van de app. Het podium voor het publiek blijft donker.",
+      "description": "Kies het kleurenschema van de app.",
       "system": "Systeem",
       "light": "Licht",
       "dark": "Donker"

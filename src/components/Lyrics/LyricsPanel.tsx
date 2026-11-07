@@ -1,4 +1,6 @@
 import { useTranslation } from "react-i18next";
+import { buildAudiencePresentationSpec } from "@/lib/audience-presentation";
+import type { ResolvedTheme } from "@/types/ipc";
 import { LocateFixed } from "lucide-react";
 import { Tooltip } from "@/components/Overlay/Tooltip";
 import { LyricLine } from "./LyricLine";
@@ -16,17 +18,19 @@ import {
 
 interface LyricsPanelProps {
   presentation?: LyricsPresentation;
+  audienceBackdropTheme?: ResolvedTheme;
 }
 
 export function LyricsPanel({
   presentation = "standard",
+  audienceBackdropTheme,
 }: LyricsPanelProps = {}) {
   const { t } = useTranslation();
   const model = useLyricsPanelModel(presentation);
   const {
     isAudience,
     spaciousStageLayout,
-    audienceSpec,
+    audienceSpec: defaultAudienceSpec,
     songId,
     lines,
     lyricsAlignment,
@@ -35,6 +39,10 @@ export function LyricsPanel({
     isPlainText,
     paged,
   } = model;
+
+  const audienceSpec = audienceBackdropTheme
+    ? buildAudiencePresentationSpec(lyricsFontStep, audienceBackdropTheme)
+    : defaultAudienceSpec;
 
   if (!songId) {
     return (
@@ -61,6 +69,17 @@ export function LyricsPanel({
   }
 
   if (lines.length === 0) {
+    if (audienceBackdropTheme) {
+      return (
+        <LyricsStatusMessage
+          isAudience
+          audienceSpec={audienceSpec}
+          className=""
+        >
+          {t("lyrics.noLyrics")}
+        </LyricsStatusMessage>
+      );
+    }
     return <LyricsEmptyState presentation={presentation} />;
   }
 
@@ -169,6 +188,7 @@ export function LyricsPanel({
                   line={line}
                   state={model.lineState(absoluteIndex)}
                   presentation={presentation}
+                  audienceBackdropTheme={audienceBackdropTheme}
                   lyricsFontStep={lyricsFontStep}
                   romanizedText={model.romanizedTextAt(absoluteIndex)}
                   alignment={lyricsAlignment}

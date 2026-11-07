@@ -7,6 +7,7 @@ export function SettingsBackdropControls() {
   const { view, preferences } = useSettings();
   const {
     coverArtBackdrop,
+    audienceCoverArtBackdrop,
     coverArtBackdropBlurPx,
     coverArtBackdropOpacityPercent,
   } = view.preferences;
@@ -35,7 +36,8 @@ export function SettingsBackdropControls() {
     [preferences],
   );
 
-  const disabled = view.isInitializing || !coverArtBackdrop;
+  const disabled =
+    view.isInitializing || (!coverArtBackdrop && !audienceCoverArtBackdrop);
   const opacity = coverArtBackdropOpacityPercent ?? themeDefaultOpacity;
   const flush = () => {
     void preferences.flushCoverArtBackdropStyle();

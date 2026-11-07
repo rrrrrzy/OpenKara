@@ -601,6 +601,7 @@
       "description": "すべての楽曲を分離するサイドバーのボタンを非表示にします。"
     },
     "coverArtBackdrop": {
+      "showOnAudienceDisplay": "観客用画面にカバーアートの背景を表示",
       "hide": "ぼかしたアルバムアートの背景を無効化",
       "description": "歌詞の背後にあるぼかしたアルバムカバーを削除します。",
       "blur": "ぼかし",
@@ -610,7 +611,7 @@
     },
     "appearance": {
       "label": "外観",
-      "description": "アプリケーションのカラースキームを選びます。観客ステージは暗いままです。",
+      "description": "アプリケーションのカラースキームを選びます。",
       "system": "システム",
       "light": "ライト",
       "dark": "ダーク"

@@ -601,6 +601,7 @@
       "description": "모든 노래를 분리하는 사이드바 버튼을 숨겨요."
     },
     "coverArtBackdrop": {
+      "showOnAudienceDisplay": "관객 화면에 앨범 표지 배경 표시",
       "hide": "흐린 앨범 아트 배경 끄기",
       "description": "가사 뒤의 흐린 앨범 커버를 제거해요.",
       "blur": "흐림 정도",
@@ -610,7 +611,7 @@
     },
     "appearance": {
       "label": "화면 모드",
-      "description": "앱의 색상 구성을 선택하세요. 관객 화면은 항상 어둡게 유지돼요.",
+      "description": "앱의 색상 구성을 선택하세요.",
       "system": "시스템",
       "light": "라이트",
       "dark": "다크"

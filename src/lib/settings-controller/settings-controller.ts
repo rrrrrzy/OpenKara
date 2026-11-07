@@ -406,6 +406,7 @@ export function createSettingsController({
       executionProvider,
       hideBatchSeparate,
       coverArtBackdrop,
+      audienceCoverArtBackdrop,
       coverArtBackdropBlurPx,
       coverArtBackdropOpacityPercent,
       lyricsBlurInactive,
@@ -464,6 +465,12 @@ export function createSettingsController({
     if (coverArtBackdrop !== undefined) {
       await writeOptimisticPreference({ coverArtBackdrop }, () =>
         backend.settings.setCoverArtBackdrop(coverArtBackdrop),
+      );
+    }
+
+    if (audienceCoverArtBackdrop !== undefined) {
+      await writeOptimisticPreference({ audienceCoverArtBackdrop }, () =>
+        backend.settings.setAudienceCoverArtBackdrop(audienceCoverArtBackdrop),
       );
     }
 

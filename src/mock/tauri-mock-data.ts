@@ -87,6 +87,7 @@ export const MOCK_DATA: MockData = {
     language: "en",
     hide_batch_separate: false,
     cover_art_backdrop: false,
+    audience_cover_art_backdrop: true,
     cover_art_backdrop_blur_px: 40,
     cover_art_backdrop_opacity_percent: null,
     lyrics_blur_inactive: false,

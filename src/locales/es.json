@@ -602,6 +602,7 @@
       "description": "Oculta el botón de la barra lateral que separa todas las canciones."
     },
     "coverArtBackdrop": {
+      "showOnAudienceDisplay": "Mostrar la portada como fondo en la pantalla para el público",
       "hide": "Desactivar el fondo difuminado de la carátula",
       "description": "Quita la carátula difuminada detrás de la letra.",
       "blur": "Desenfoque",
@@ -611,7 +612,7 @@
     },
     "appearance": {
       "label": "Apariencia",
-      "description": "Elige el esquema de color de la aplicación. El escenario para el público permanece oscuro.",
+      "description": "Elige el esquema de color de la aplicación.",
       "system": "Sistema",
       "light": "Claro",
       "dark": "Oscuro"

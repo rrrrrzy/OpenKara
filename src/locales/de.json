@@ -601,6 +601,7 @@
       "description": "Blendet die Seitenleisten-Schaltfläche aus, die alle Songs trennt."
     },
     "coverArtBackdrop": {
+      "showOnAudienceDisplay": "Cover-Hintergrund auf der Publikumsanzeige zeigen",
       "hide": "Unscharfen Albumcover-Hintergrund deaktivieren",
       "description": "Entfernt das unscharfe Albumcover hinter den Liedtexten.",
       "blur": "Unschärfe",
@@ -610,7 +611,7 @@
     },
     "appearance": {
       "label": "Darstellung",
-      "description": "Wählen Sie das Farbschema der Anwendung. Die Publikumsbühne bleibt dunkel.",
+      "description": "Wählen Sie das Farbschema der Anwendung.",
       "system": "System",
       "light": "Hell",
       "dark": "Dunkel"

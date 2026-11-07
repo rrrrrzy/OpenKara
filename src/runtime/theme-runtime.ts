@@ -80,18 +80,13 @@ function createNativeThemeBridge(): NativeThemeBridge | null {
 
 const STARTUP_TIMEOUT_MS = 750;
 
-export function useThemeRuntime(previewMode = false): {
-  resolvedTheme: ResolvedTheme;
-  startupThemeReady: boolean;
-} {
+export function useResolvedTheme(): ResolvedTheme {
   const themePreference = useSettingsStore((s) => s.themePreference);
-  const hydrated = useSettingsStore((s) => s.hydrated);
 
   const [systemPrefersDark, setSystemPrefersDark] = useState(() => {
     const media = getSystemPrefersDarkMedia();
     return media ? media.matches : true;
   });
-  const [startupThemeReady, setStartupThemeReady] = useState(false);
 
   const resolvedTheme = resolveThemePreference(
     themePreference,
@@ -113,6 +108,18 @@ export function useThemeRuntime(previewMode = false): {
     });
     return unsubscribe;
   }, [themePreference]);
+
+  return resolvedTheme;
+}
+
+export function useThemeRuntime(previewMode = false): {
+  resolvedTheme: ResolvedTheme;
+  startupThemeReady: boolean;
+} {
+  const themePreference = useSettingsStore((s) => s.themePreference);
+  const hydrated = useSettingsStore((s) => s.hydrated);
+  const resolvedTheme = useResolvedTheme();
+  const [startupThemeReady, setStartupThemeReady] = useState(false);
 
   useLayoutEffect(() => {
     if (!hydrated || previewMode) {

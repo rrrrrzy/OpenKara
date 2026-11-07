@@ -1,4 +1,8 @@
-import type { AirPlayColor, AudiencePresentationSpec } from "@/types/ipc";
+import type {
+  AirPlayColor,
+  AudiencePresentationSpec,
+  ResolvedTheme,
+} from "@/types/ipc";
 
 const ACTIVE_TEXT_COLOR: AirPlayColor = {
   red: 1,
@@ -55,9 +59,15 @@ function clampLyricsFontStep(step: number): -2 | -1 | 0 | 1 | 2 | 3 {
   return Math.max(-2, Math.min(3, step)) as -2 | -1 | 0 | 1 | 2 | 3;
 }
 
+function gray(level: number): AirPlayColor {
+  return { red: level / 255, green: level / 255, blue: level / 255, alpha: 1 };
+}
+
 export function buildAudiencePresentationSpec(
   lyricsFontStep: number,
+  backdropTheme?: ResolvedTheme,
 ): AudiencePresentationSpec {
+  const lightBackdrop = backdropTheme === "light";
   return {
     contentWidthRatio: 0.92,
     contentMaxWidthPx: 1600,
@@ -69,12 +79,20 @@ export function buildAudiencePresentationSpec(
     activeScale: 1.05,
     statusFontSizePx: 18,
     activeGlowBlurPx: 12,
-    activeTextColor: ACTIVE_TEXT_COLOR,
-    pastTextColor: PAST_TEXT_COLOR,
-    futureTextColor: FUTURE_TEXT_COLOR,
-    plainTextColor: PLAIN_TEXT_COLOR,
-    statusTextColor: STATUS_TEXT_COLOR,
-    activeGlowColor: ACTIVE_GLOW_COLOR,
+    activeTextColor: lightBackdrop ? gray(0) : ACTIVE_TEXT_COLOR,
+    pastTextColor: backdropTheme
+      ? gray(lightBackdrop ? 20 : 225)
+      : PAST_TEXT_COLOR,
+    futureTextColor: backdropTheme
+      ? gray(lightBackdrop ? 16 : 235)
+      : FUTURE_TEXT_COLOR,
+    plainTextColor: lightBackdrop ? gray(0) : PLAIN_TEXT_COLOR,
+    statusTextColor: backdropTheme
+      ? gray(lightBackdrop ? 20 : 225)
+      : STATUS_TEXT_COLOR,
+    activeGlowColor: lightBackdrop
+      ? { ...ACTIVE_GLOW_COLOR, alpha: 0 }
+      : ACTIVE_GLOW_COLOR,
   };
 }
 

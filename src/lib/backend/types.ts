@@ -252,6 +252,7 @@ export interface SettingsBackend {
   setModelVariant(variant: string): Promise<AppSettings>;
   setHideBatchSeparate(value: boolean): Promise<AppSettings>;
   setCoverArtBackdrop(value: boolean): Promise<AppSettings>;
+  setAudienceCoverArtBackdrop(value: boolean): Promise<AppSettings>;
   setCoverArtBackdropStyle(
     blurPx: number,
     opacityPercent: number | null,

@@ -707,6 +707,7 @@
       "description": "Hide the sidebar button that re-separates all songs into 4-stem mode."
     },
     "coverArtBackdrop": {
+      "showOnAudienceDisplay": "Show cover-art backdrop on the audience display",
       "hide": "Disable blurred album art backdrop",
       "description": "Removes the blurred album cover behind lyrics.",
       "blur": "Blur",
@@ -716,7 +717,7 @@
     },
     "appearance": {
       "label": "Appearance",
-      "description": "Choose the application color scheme. The audience stage stays dark.",
+      "description": "Choose the application color scheme.",
       "system": "System",
       "light": "Light",
       "dark": "Dark"

@@ -602,6 +602,7 @@
       "description": "Masque le bouton de la barre latérale qui sépare toutes les chansons."
     },
     "coverArtBackdrop": {
+      "showOnAudienceDisplay": "Afficher la pochette en arrière-plan sur l’écran du public",
       "hide": "Désactiver l'arrière-plan flouté de la pochette",
       "description": "Supprime la pochette floutée derrière les paroles.",
       "blur": "Flou",
@@ -611,7 +612,7 @@
     },
     "appearance": {
       "label": "Apparence",
-      "description": "Choisissez le thème de couleurs de l'application. La scène destinée au public reste sombre.",
+      "description": "Choisissez le thème de couleurs de l'application.",
       "system": "Système",
       "light": "Clair",
       "dark": "Sombre"

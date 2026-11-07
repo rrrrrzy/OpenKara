@@ -141,6 +141,7 @@ describe("SettingsGeneralSection", () => {
     const harness = await createInitializedSettingsHarness({
       settings: {
         cover_art_backdrop: false,
+        audience_cover_art_backdrop: false,
         cover_art_backdrop_blur_px: 65,
         cover_art_backdrop_opacity_percent: 75,
       },

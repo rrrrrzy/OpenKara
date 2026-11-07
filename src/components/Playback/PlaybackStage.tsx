@@ -10,21 +10,23 @@ import { useLibraryStore } from "@/stores/library-store";
 import { usePlayerStore } from "@/stores/player-store";
 import { useSettingsStore } from "@/stores/settings-store";
 import { songHasCdgMedia } from "@/lib/song-media";
-import { isVideoSourceQueueId } from "@/playback";
+import { isOnlinePreviewQueueId, isVideoSourceQueueId } from "@/playback";
 import { useCatalogStore } from "@/stores/catalog-store";
 import {
   YOUTUBE_WATCH_BOUNDS_EVENT,
   YOUTUBE_WATCH_HOST_ELEMENT_ID,
   measureYoutubeWatchHostElement,
 } from "@/playback/youtube-watch-host";
-import type { CoverArtBytes } from "@/types/ipc";
+import type { CoverArtBytes, ResolvedTheme } from "@/types/ipc";
 
 interface PlaybackStageProps {
   presentation?: "standard" | "audience";
+  backdropTheme?: ResolvedTheme;
 }
 
 export function PlaybackStage({
   presentation = "standard",
+  backdropTheme = "dark",
 }: PlaybackStageProps) {
   const { library } = useBackend();
   const hasCdg = useCdgStore((s) => s.hasCdg);
@@ -42,43 +44,55 @@ export function PlaybackStage({
     (s) => s.coverArtBackdropOpacityPercent,
   );
 
-  const [fetchedCoverArt, setFetchedCoverArt] = useState<CoverArtBytes | null>(
-    null,
+  const isAudience = presentation === "audience";
+  const audienceCoverArtBackdrop = useSettingsStore(
+    (s) => s.hydrated && s.audienceCoverArtBackdrop,
   );
+  const showCdg = hasCdg || currentSongHasCdg;
+  const showBackdrop =
+    songId != null &&
+    !showCdg &&
+    !isYoutube &&
+    !isOnlinePreviewQueueId(songId) &&
+    (isAudience ? audienceCoverArtBackdrop : coverArtBackdrop);
+  const inlineCoverArt = currentSong?.cover_art;
+  const previewSongId =
+    showBackdrop &&
+    inlineCoverArt == null &&
+    (isAudience || currentSong?.has_cover_art)
+      ? songId
+      : null;
+  const [preview, setPreview] = useState<{
+    songId: string;
+    bytes: CoverArtBytes;
+  } | null>(null);
+
   useEffect(() => {
-    setFetchedCoverArt(null);
-    if (currentSong?.cover_art != null || !currentSong?.has_cover_art) {
-      return;
-    }
+    setPreview(null);
+    if (previewSongId == null) return;
     let cancelled = false;
     library
-      .getCoverArtPreview(currentSong.hash)
-      .then((data) => {
-        if (!cancelled) setFetchedCoverArt(data);
+      .getCoverArtPreview(previewSongId)
+      .then((bytes) => {
+        if (!cancelled) setPreview({ songId: previewSongId, bytes });
       })
       .catch(() => {});
     return () => {
       cancelled = true;
     };
-  }, [
-    library,
-    currentSong?.hash,
-    currentSong?.cover_art,
-    currentSong?.has_cover_art,
-  ]);
+  }, [library, previewSongId]);
 
   const nativeBackdropUrl = useCoverArtUrl(
     songId ?? "native-stage-empty",
-    currentSong?.cover_art ?? fetchedCoverArt ?? null,
+    showBackdrop
+      ? (inlineCoverArt ??
+          (preview?.songId === previewSongId ? preview.bytes : null))
+      : null,
     "preview",
   );
-  const stageAmbience =
-    coverArtBackdrop &&
-    presentation === "standard" &&
-    !hasCdg &&
-    !currentSongHasCdg &&
-    nativeBackdropUrl != null;
-  const showCdg = hasCdg || currentSongHasCdg;
+  const stageAmbience = nativeBackdropUrl != null;
+  const audienceBackdropTheme =
+    isAudience && stageAmbience ? backdropTheme : undefined;
   const audienceActive = usePlayerStore((s) => s.localAudienceOutputActive);
   const showYoutube =
     isYoutube && (presentation === "audience" || !audienceActive);
@@ -129,6 +143,7 @@ export function PlaybackStage({
     <div
       className="relative flex h-full w-full flex-1 overflow-hidden"
       data-stage-visual-variant={stageAmbience ? "ambience" : "default"}
+      data-audience-backdrop-theme={audienceBackdropTheme}
     >
       {showYoutube ? (
         <div className="relative z-10 flex min-h-0 flex-1 flex-col">
@@ -146,7 +161,11 @@ export function PlaybackStage({
       ) : (
         <>
           {stageAmbience ? (
-            <div className="absolute inset-0" data-native-stage-backdrop="true">
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-0"
+              data-native-stage-backdrop="true"
+            >
               <div
                 className="absolute bg-center bg-cover"
                 style={{
@@ -168,7 +187,10 @@ export function PlaybackStage({
             key="lyrics-stage-slot"
             className="relative z-10 flex min-h-0 flex-1 overflow-hidden"
           >
-            <LyricsPanel presentation={presentation} />
+            <LyricsPanel
+              presentation={presentation}
+              audienceBackdropTheme={audienceBackdropTheme}
+            />
           </div>
         </>
       )}

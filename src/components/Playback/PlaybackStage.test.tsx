@@ -15,7 +15,9 @@ const {
   mockGetCoverArtPreview,
 } = vi.hoisted(() => ({
   mockSettingsState: {
+    hydrated: true,
     coverArtBackdrop: true,
+    audienceCoverArtBackdrop: true,
     coverArtBackdropBlurPx: 40,
     coverArtBackdropOpacityPercent: null as number | null,
   },
@@ -206,18 +208,112 @@ describe("PlaybackStage", () => {
         ).toBe(viewport);
         expect(viewport.scrollTop).toBe(123);
       }
+      mockSettingsState.coverArtBackdrop = false;
+      await act(async () => {
+        root.render(
+          <PlaybackStage presentation="audience" backdropTheme="light" />,
+        );
+      });
+      expect(
+        container.querySelector("[data-native-stage-backdrop]"),
+      ).not.toBeNull();
+      expect(
+        container.querySelector('[data-audience-backdrop-theme="light"]'),
+      ).not.toBeNull();
+
+      mockSettingsState.audienceCoverArtBackdrop = false;
       await act(async () => {
         root.render(<PlaybackStage presentation="audience" />);
       });
       expect(
         container.querySelector("[data-native-stage-backdrop]"),
       ).toBeNull();
+      expect(
+        container.querySelector("[data-testid='lyrics-scroll-viewport']"),
+      ).toBe(viewport);
     } finally {
+      mockSettingsState.coverArtBackdrop = true;
+      mockSettingsState.audienceCoverArtBackdrop = true;
       mockSettingsState.coverArtBackdropBlurPx = 40;
       mockSettingsState.coverArtBackdropOpacityPercent = null;
       await act(async () => {
         root.unmount();
       });
+    }
+  });
+
+  test("loads the audience cover without a library row and discards stale results", async () => {
+    const songs = mockLibraryState.songs;
+    const snapshot = mockPlayerState.snapshot;
+    mockLibraryState.songs = [];
+    mockPlayerState.snapshot = { song_id: "first" };
+    mockCdgState.hasCdg = false;
+    let resolveStale: (bytes: number[]) => void = () => {};
+    mockGetCoverArtPreview
+      .mockResolvedValueOnce([0xff, 0xd8])
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveStale = resolve;
+          }),
+      )
+      .mockResolvedValueOnce(null)
+      .mockRejectedValueOnce(new Error("cover unavailable"));
+
+    const container = document.createElement("div");
+    const root = createRoot(container);
+    const render = () =>
+      act(async () => {
+        root.render(<PlaybackStage presentation="audience" />);
+      });
+    const cover = () => container.querySelector("[data-native-stage-backdrop]");
+    try {
+      mockSettingsState.hydrated = false;
+      await render();
+      expect(mockGetCoverArtPreview).not.toHaveBeenCalled();
+      mockSettingsState.hydrated = true;
+      await render();
+      expect(cover()).not.toBeNull();
+
+      mockPlayerState.snapshot = { song_id: "slow" };
+      await render();
+      expect(cover()).toBeNull();
+
+      mockPlayerState.snapshot = { song_id: "no-cover" };
+      await render();
+      await act(async () => resolveStale([0xff, 0xd8]));
+      expect(cover()).toBeNull();
+
+      mockPlayerState.snapshot = { song_id: "unavailable" };
+      await render();
+      expect(cover()).toBeNull();
+      expect(mockGetCoverArtPreview.mock.calls).toEqual([
+        ["first"],
+        ["slow"],
+        ["no-cover"],
+        ["unavailable"],
+      ]);
+      mockPlayerState.snapshot = { song_id: "yt:abc" };
+      await render();
+      expect(
+        container.querySelector("[data-youtube-watch-host]"),
+      ).not.toBeNull();
+      expect(cover()).toBeNull();
+
+      mockPlayerState.snapshot = { song_id: "cdg" };
+      mockCdgState.hasCdg = true;
+      await render();
+      expect(
+        container.querySelector("[data-testid='cdg-canvas']"),
+      ).not.toBeNull();
+      expect(cover()).toBeNull();
+      expect(mockGetCoverArtPreview).toHaveBeenCalledTimes(4);
+    } finally {
+      mockCdgState.hasCdg = false;
+      mockLibraryState.songs = songs;
+      mockPlayerState.snapshot = snapshot;
+      mockSettingsState.hydrated = true;
+      await act(async () => root.unmount());
     }
   });
 

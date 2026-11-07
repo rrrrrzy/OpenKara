@@ -601,6 +601,7 @@
       "description": "Ẩn nút ở thanh bên dùng để tách tất cả bài hát."
     },
     "coverArtBackdrop": {
+      "showOnAudienceDisplay": "Hiện ảnh bìa làm nền trên màn hình khán giả",
       "hide": "Tắt nền ảnh bìa album làm mờ",
       "description": "Bỏ ảnh bìa album làm mờ phía sau lời.",
       "blur": "Độ mờ nhòe",
@@ -610,7 +611,7 @@
     },
     "appearance": {
       "label": "Giao diện",
-      "description": "Chọn bảng màu ứng dụng. Sân khấu khán giả luôn giữ tối.",
+      "description": "Chọn bảng màu ứng dụng.",
       "system": "Theo hệ thống",
       "light": "Sáng",
       "dark": "Tối"

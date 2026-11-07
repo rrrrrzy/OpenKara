@@ -601,6 +601,7 @@
       "description": "Sembunyikan tombol bilah samping yang memisahkan semua lagu."
     },
     "coverArtBackdrop": {
+      "showOnAudienceDisplay": "Tampilkan sampul sebagai latar di layar penonton",
       "hide": "Nonaktifkan latar sampul album buram",
       "description": "Menghapus sampul album buram di belakang lirik.",
       "blur": "Keburaman",
@@ -610,7 +611,7 @@
     },
     "appearance": {
       "label": "Tampilan",
-      "description": "Pilih skema warna aplikasi. Panggung penonton tetap gelap.",
+      "description": "Pilih skema warna aplikasi.",
       "system": "Sistem",
       "light": "Terang",
       "dark": "Gelap"

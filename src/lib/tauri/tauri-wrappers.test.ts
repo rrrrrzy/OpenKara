@@ -434,6 +434,7 @@ describe("settings", () => {
     language: null,
     hide_batch_separate: false,
     cover_art_backdrop: true,
+    audience_cover_art_backdrop: true,
     cover_art_backdrop_blur_px: 40,
     cover_art_backdrop_opacity_percent: null,
     lyrics_blur_inactive: false,
@@ -615,6 +616,14 @@ describe("settings", () => {
       value: false,
     });
     expect(returned).toBe(appSettings);
+  });
+
+  test("setAudienceCoverArtBackdrop writes the audience preference", async () => {
+    mockInvoke.mockResolvedValueOnce(appSettings);
+    expect(await settings.setAudienceCoverArtBackdrop(false)).toBe(appSettings);
+    expect(mockInvoke).toHaveBeenCalledWith("set_audience_cover_art_backdrop", {
+      value: false,
+    });
   });
 
   test("setCoverArtBackdropStyle sends both values, including reset null", async () => {

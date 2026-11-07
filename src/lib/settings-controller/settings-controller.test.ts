@@ -60,6 +60,7 @@ const BASE_SETTINGS: AppSettings = {
   language: "en",
   hide_batch_separate: false,
   cover_art_backdrop: true,
+  audience_cover_art_backdrop: true,
   cover_art_backdrop_blur_px: 40,
   cover_art_backdrop_opacity_percent: null,
   lyrics_blur_inactive: false,
@@ -831,6 +832,23 @@ describe("preferences", () => {
     expect(harness.view().preferences.lyricsBlurInactive).toBe(true);
     expect(setOnlineSourceEnabled).toHaveBeenCalledWith("youtube", true);
     expect(harness.view().preferences.youtubeSourceEnabled).toBe(true);
+  });
+
+  test("a rejected audience backdrop write restores its own switch", async () => {
+    const setAudienceCoverArtBackdrop = vi.fn(async () => {
+      throw new Error("settings unavailable");
+    });
+    const harness = createSettingsHarness({
+      overrides: { settings: { setAudienceCoverArtBackdrop } },
+    });
+
+    await harness.controller.preferences.set({
+      audienceCoverArtBackdrop: false,
+    });
+
+    expect(setAudienceCoverArtBackdrop).toHaveBeenCalledWith(false);
+    expect(harness.view().preferences.audienceCoverArtBackdrop).toBe(true);
+    expect(harness.view().preferences.coverArtBackdrop).toBe(true);
   });
 
   test("a rejected automatic lyrics update write restores the previous preference", async () => {

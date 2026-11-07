@@ -1,3 +1,5 @@
+import { E2E_MOCK_DATA } from "@/mock/tauri-mock-data";
+import { createTauriMockScript } from "../fixtures/tauri-mock";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, WCAG_AA_TAGS } from "./fixtures/accessibility-test";
 
@@ -135,12 +137,27 @@ test.describe("Settings accessibility", () => {
 test("cover backdrop sliders support keyboard editing, theme defaults, and reset", async ({
   page,
   tauriMock,
+  context,
   a11y,
 }) => {
+  test.setTimeout(60_000);
   await page.goto("/");
   await expect(page.getByText("Earfquake")).toBeVisible();
   await page.getByRole("button", { name: "Earfquake", exact: true }).dblclick();
   await expect(page.getByRole("button", { name: /pause/i })).toBeVisible();
+  const audience = await context.newPage();
+  const snapshot = E2E_MOCK_DATA.playbackSnapshot;
+  await audience.addInitScript(
+    createTauriMockScript({
+      ...E2E_MOCK_DATA,
+      playbackSnapshot: { ...snapshot, song_id: "earfquake" },
+    }),
+  );
+  await audience.goto("/?mode=fullscreen-player");
+  const audienceImage = audience
+    .locator("[data-native-stage-backdrop] > div")
+    .first();
+  await expect(audienceImage).toBeVisible();
   await page.getByRole("button", { name: "Settings" }).click();
   const dialog = page.getByRole("dialog", { name: "Preferences" });
   const hide = dialog.getByRole("checkbox", {
@@ -150,6 +167,24 @@ test("cover backdrop sliders support keyboard editing, theme defaults, and reset
   const image = page.locator("[data-native-stage-backdrop] > div").first();
   await expect(image).toHaveCSS("opacity", "0.4");
   await expect(image).toHaveCSS("filter", /blur\(40px\)/);
+  const expectMatchingBackdrop = async () => {
+    await expect(audienceImage).toHaveCSS(
+      "opacity",
+      await image.evaluate((el) => getComputedStyle(el).opacity),
+    );
+    await expect(audienceImage).toHaveCSS(
+      "filter",
+      await image.evaluate((el) => getComputedStyle(el).filter),
+    );
+    const scrim = "[data-native-stage-backdrop] > div:nth-child(2)";
+    await expect(audience.locator(scrim)).toHaveCSS(
+      "background-color",
+      await page
+        .locator(scrim)
+        .evaluate((el) => getComputedStyle(el).backgroundColor),
+    );
+  };
+  await expectMatchingBackdrop();
   const viewport = await page
     .getByTestId("lyrics-scroll-viewport")
     .elementHandle();
@@ -160,6 +195,7 @@ test("cover backdrop sliders support keyboard editing, theme defaults, and reset
   await dialog.getByRole("radio", { name: "Light", exact: true }).check();
   await expect(opacity).toHaveValue("55");
   await expect(image).toHaveCSS("opacity", "0.55");
+  await expectMatchingBackdrop();
   await opacity.scrollIntoViewIfNeeded();
   await opacity.focus();
   await page.keyboard.press("Home");
@@ -169,6 +205,7 @@ test("cover backdrop sliders support keyboard editing, theme defaults, and reset
   await expect(blur).toHaveValue("80");
   await expect(image).toHaveCSS("filter", /blur\(80px\)/);
   await expect(image).toHaveCSS("opacity", "0");
+  await expectMatchingBackdrop();
   expect(await viewport?.evaluate((element) => element.isConnected)).toBe(true);
   const overscan = await image.evaluate((element) => {
     const imageBounds = element.getBoundingClientRect();
@@ -205,10 +242,37 @@ test("cover backdrop sliders support keyboard editing, theme defaults, and reset
   await expect(blur).toHaveValue("80");
   await expect(opacity).toHaveValue("0");
   await hide.check();
+  await expect(image).toHaveCount(0);
+  await expect(audienceImage).toBeVisible();
+  await expect(blur).toBeEnabled();
+
+  const audienceToggle = dialog.getByRole("checkbox", {
+    name: "Show cover-art backdrop on the audience display",
+  });
+  await hide.focus();
+  await page.keyboard.press("Tab");
+  await expect(audienceToggle).toBeFocused();
+  await page.keyboard.press("Space");
+  await expect(audienceToggle).not.toBeChecked();
+  await expect(audienceImage).toHaveCount(0);
   await expect(blur).toBeDisabled();
   await expect(opacity).toBeDisabled();
   await hide.uncheck();
+  await expect(image).toBeVisible();
+  await expect(audienceImage).toHaveCount(0);
   await expect(blur).toHaveValue("80");
+  await audienceToggle.check();
+  await opacity.focus();
+  await page.keyboard.press("End");
+  await blur.focus();
+  await page.keyboard.press("Home");
+  await expect(image).toHaveCSS("opacity", "1");
+  await expect(image).toHaveCSS("filter", /blur\(0px\)/);
+  await expectMatchingBackdrop();
+  const audienceAxe = await new AxeBuilder({ page: audience })
+    .withTags(WCAG_AA_TAGS)
+    .analyze();
+  expect(audienceAxe.violations).toEqual([]);
   await dialog
     .getByRole("button", { name: "Restore defaults", exact: true })
     .click();
@@ -222,4 +286,5 @@ test("cover backdrop sliders support keyboard editing, theme defaults, and reset
           .at(-1)?.args,
     )
     .toEqual({ blurPx: 40, opacityPercent: null });
+  await expectMatchingBackdrop();
 });

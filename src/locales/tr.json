@@ -601,6 +601,7 @@
       "description": "Tüm şarkıları ayıran kenar çubuğu düğmesini gizler."
     },
     "coverArtBackdrop": {
+      "showOnAudienceDisplay": "İzleyici ekranında kapak görselini arka plan olarak göster",
       "hide": "Bulanık albüm kapağı arka planını devre dışı bırak",
       "description": "Sözlerin arkasındaki bulanık albüm kapağını kaldırır.",
       "blur": "Bulanıklık",
@@ -610,7 +611,7 @@
     },
     "appearance": {
       "label": "Görünüm",
-      "description": "Uygulama renk düzenini seçin. İzleyici sahnesi karanlık kalır.",
+      "description": "Uygulama renk düzenini seçin.",
       "system": "Sistem",
       "light": "Açık",
       "dark": "Koyu"

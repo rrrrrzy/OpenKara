@@ -605,6 +605,7 @@
       "description": "隱藏側邊欄中用於將所有歌曲重新分離為4軌模式的按鈕。"
     },
     "coverArtBackdrop": {
+      "showOnAudienceDisplay": "在大螢幕顯示封面背景",
       "hide": "停用模糊專輯封面背景",
       "description": "移除歌詞後方的模糊專輯封面。",
       "blur": "模糊度",
@@ -614,7 +615,7 @@
     },
     "appearance": {
       "label": "外觀",
-      "description": "選擇應用程式的配色方案。觀眾舞台會維持深色。",
+      "description": "選擇應用程式的配色方案。",
       "system": "跟隨系統",
       "light": "淺色",
       "dark": "深色"

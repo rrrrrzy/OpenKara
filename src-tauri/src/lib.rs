@@ -284,6 +284,7 @@ pub fn run() {
             commands::reveal::reveal_in_folder,
             commands::settings::set_hide_batch_separate,
             commands::settings::set_cover_art_backdrop,
+            commands::settings::set_audience_cover_art_backdrop,
             commands::settings::set_cover_art_backdrop_style,
             commands::settings::set_lyrics_blur_inactive,
             commands::settings::set_auto_update_lyrics,

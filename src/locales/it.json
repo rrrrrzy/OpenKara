@@ -602,6 +602,7 @@
       "description": "Nascondi il pulsante della barra laterale che separa tutte le canzoni."
     },
     "coverArtBackdrop": {
+      "showOnAudienceDisplay": "Mostra la copertina come sfondo sullo schermo del pubblico",
       "hide": "Disattiva lo sfondo sfocato della copertina",
       "description": "Rimuove la copertina dell'album sfocata dietro il testo.",
       "blur": "Sfocatura",
@@ -611,7 +612,7 @@
     },
     "appearance": {
       "label": "Aspetto",
-      "description": "Scegli la combinazione di colori dell'applicazione. Il palco per il pubblico resta scuro.",
+      "description": "Scegli la combinazione di colori dell'applicazione.",
       "system": "Sistema",
       "light": "Chiaro",
       "dark": "Scuro"

@@ -1285,6 +1285,13 @@ export function createTauriMock(data: any): TauriMockResult {
       };
       return settingsSnapshot;
     },
+    set_audience_cover_art_backdrop: (args: { value: boolean }) => {
+      settingsSnapshot = {
+        ...settingsSnapshot,
+        audience_cover_art_backdrop: args.value,
+      };
+      return settingsSnapshot;
+    },
     set_auto_update_lyrics: (args: { value: boolean }) => {
       settingsSnapshot = {
         ...settingsSnapshot,

@@ -74,6 +74,7 @@ function makeAppSettings(overrides: Partial<AppSettings> = {}): AppSettings {
     language: null,
     hide_batch_separate: false,
     cover_art_backdrop: true,
+    audience_cover_art_backdrop: true,
     cover_art_backdrop_blur_px: 40,
     cover_art_backdrop_opacity_percent: null,
     lyrics_blur_inactive: false,
@@ -154,6 +155,10 @@ describe("settings-store sync", () => {
     expect(secondary.store.getState().lyricsFontStep).toBe(3);
     primary.store.getState().patchAppSettings({ autoUpdateLyrics: false });
     expect(secondary.store.getState().autoUpdateLyrics).toBe(false);
+    primary.store
+      .getState()
+      .patchAppSettings({ audienceCoverArtBackdrop: false });
+    expect(secondary.store.getState().audienceCoverArtBackdrop).toBe(false);
 
     primary.dispose();
     secondary.dispose();
@@ -176,6 +181,7 @@ describe("settings-store actions", () => {
       language: null,
       hideBatchSeparate: false,
       coverArtBackdrop: true,
+      audienceCoverArtBackdrop: true,
       coverArtBackdropBlurPx: 40,
       coverArtBackdropOpacityPercent: null,
       hideUpgradeAll: false,
@@ -246,6 +252,7 @@ describe("settings-store actions", () => {
       language: "ja",
       hide_batch_separate: true,
       cover_art_backdrop: false,
+      audience_cover_art_backdrop: true,
       cover_art_backdrop_blur_px: 40,
       cover_art_backdrop_opacity_percent: null,
       lyrics_blur_inactive: false,
@@ -591,6 +598,7 @@ describe("settings-store actions", () => {
       language: "en",
       hideBatchSeparate: true,
       coverArtBackdrop: false,
+      audienceCoverArtBackdrop: true,
       coverArtBackdropBlurPx: 40,
       coverArtBackdropOpacityPercent: null,
       lyricsBlurInactive: false,
@@ -615,6 +623,7 @@ describe("settings-store actions", () => {
       language: "en",
       hideBatchSeparate: true,
       coverArtBackdrop: false,
+      audienceCoverArtBackdrop: true,
       coverArtBackdropBlurPx: 40,
       coverArtBackdropOpacityPercent: null,
       lyricsBlurInactive: false,

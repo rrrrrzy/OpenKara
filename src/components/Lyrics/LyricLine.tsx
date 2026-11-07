@@ -12,7 +12,11 @@ import {
 import { lyricsLineRuntime } from "@/lib/lyrics-line-runtime";
 import { useLyricsStore } from "@/stores/lyrics-store";
 import { usePlayerStore } from "@/stores/player-store";
-import type { LyricLine as LyricLineType, WordToken } from "@/types/ipc";
+import type {
+  LyricLine as LyricLineType,
+  ResolvedTheme,
+  WordToken,
+} from "@/types/ipc";
 import {
   CENTERED_BG_FONT_SIZE,
   CENTERED_LINE_LETTER_SPACING,
@@ -48,6 +52,7 @@ interface LyricLineProps {
   activeWordIndex?: number;
   presentation?: LyricsPresentation;
   lyricsFontStep: number;
+  audienceBackdropTheme?: ResolvedTheme;
   romanizedText?: string;
   alignment?: "center" | "left";
 }
@@ -95,6 +100,7 @@ function areLyricLinePropsEqual(
     previous.state !== next.state ||
     previous.presentation !== next.presentation ||
     previous.lyricsFontStep !== next.lyricsFontStep ||
+    previous.audienceBackdropTheme !== next.audienceBackdropTheme ||
     previous.romanizedText !== next.romanizedText ||
     previous.alignment !== next.alignment
   ) {
@@ -126,6 +132,7 @@ export const LyricLine = memo(function LyricLine({
   activeWordIndex: activeWordIndexProp,
   presentation = "standard",
   lyricsFontStep,
+  audienceBackdropTheme,
   romanizedText,
   alignment = "center",
 }: LyricLineProps) {
@@ -141,8 +148,10 @@ export const LyricLine = memo(function LyricLine({
   const secondaryTextSizeClass =
     getLyricsSecondaryTextSizeClass(lyricsFontStep);
   const romanTextSizeClass = getLyricsRomanTextSizeClass(lyricsFontStep);
-  const audiencePresentationSpec =
-    buildAudiencePresentationSpec(lyricsFontStep);
+  const audiencePresentationSpec = buildAudiencePresentationSpec(
+    lyricsFontStep,
+    audienceBackdropTheme,
+  );
 
   const handleClick = () => {
     if (!isSeekable) return;
@@ -343,7 +352,12 @@ export const LyricLine = memo(function LyricLine({
                 lineHeight: 1.1,
                 textAlign: "center",
                 whiteSpace: "nowrap",
-                opacity: state === "plain" || state === "active" ? 0.5 : 0.3,
+                color: audienceBackdropTheme ? "inherit" : undefined,
+                opacity: audienceBackdropTheme
+                  ? 1
+                  : state === "plain" || state === "active"
+                    ? 0.5
+                    : 0.3,
               }}
             >
               {wordRoman}
@@ -488,7 +502,7 @@ export const LyricLine = memo(function LyricLine({
                 }
               : undefined),
           transition: "opacity 0.3s ease, transform 0.3s ease",
-          opacity: state === "active" ? 0.4 : 0,
+          opacity: state === "active" ? (audienceBackdropTheme ? 1 : 0.4) : 0,
           transform: state === "active" ? "translateY(0)" : "translateY(0.4em)",
           visibility: state === "active" ? "visible" : "hidden",
           height: state === "active" ? "auto" : 0,
@@ -524,7 +538,7 @@ export const LyricLine = memo(function LyricLine({
                   : ""
               }`
             : presentation === "audience"
-              ? "motion-surface font-medium tracking-tight opacity-50"
+              ? "motion-surface font-medium tracking-tight"
               : "motion-surface font-medium tracking-wide text-[var(--color-lyrics-active)]"
         }
         style={
@@ -542,7 +556,7 @@ export const LyricLine = memo(function LyricLine({
                               audiencePresentationSpec.activeGlowColor,
                             )}`
                           : undefined,
-                      opacity: 0.85,
+                      opacity: audienceBackdropTheme ? 1 : 0.85,
                     }
                   : undefined),
               }
@@ -551,7 +565,7 @@ export const LyricLine = memo(function LyricLine({
                   fontSize: audiencePresentationSpec.fontSizePx * 0.55,
                   lineHeight: audiencePresentationSpec.lineHeightMultiple,
                   color: colorToCss(romanStateColor),
-                  opacity: 0.45,
+                  opacity: audienceBackdropTheme ? 1 : 0.45,
                 }
               : {
                   fontSize: CENTERED_ROMAN_FONT_SIZE,

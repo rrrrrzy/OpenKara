@@ -22,6 +22,7 @@ export interface AppSettingsSnapshot {
   language: string | null;
   hideBatchSeparate: boolean;
   coverArtBackdrop: boolean;
+  audienceCoverArtBackdrop: boolean;
   coverArtBackdropBlurPx: number;
   coverArtBackdropOpacityPercent: number | null;
   lyricsBlurInactive: boolean;
@@ -49,6 +50,7 @@ interface SettingsState {
   language: AppSettingsSnapshot["language"];
   hideBatchSeparate: AppSettingsSnapshot["hideBatchSeparate"];
   coverArtBackdrop: AppSettingsSnapshot["coverArtBackdrop"];
+  audienceCoverArtBackdrop: AppSettingsSnapshot["audienceCoverArtBackdrop"];
   coverArtBackdropBlurPx: AppSettingsSnapshot["coverArtBackdropBlurPx"];
   coverArtBackdropOpacityPercent: AppSettingsSnapshot["coverArtBackdropOpacityPercent"];
   setCoverArtBackdropStyle(blurPx: number, opacityPercent: number | null): void;
@@ -99,6 +101,7 @@ export const DEFAULT_APP_SETTINGS: AppSettingsSnapshot = {
   language: null,
   hideBatchSeparate: false,
   coverArtBackdrop: true,
+  audienceCoverArtBackdrop: true,
   coverArtBackdropBlurPx: 40,
   coverArtBackdropOpacityPercent: null,
   lyricsBlurInactive: false,
@@ -126,6 +129,7 @@ function toAppSettingsSnapshot(settings: AppSettings): AppSettingsSnapshot {
     language: settings.language,
     hideBatchSeparate: settings.hide_batch_separate,
     coverArtBackdrop: settings.cover_art_backdrop,
+    audienceCoverArtBackdrop: settings.audience_cover_art_backdrop ?? true,
     coverArtBackdropBlurPx: settings.cover_art_backdrop_blur_px ?? 40,
     coverArtBackdropOpacityPercent:
       settings.cover_art_backdrop_opacity_percent ?? null,
@@ -157,6 +161,7 @@ function selectAppSettingsSnapshot(
     language: state.language,
     hideBatchSeparate: state.hideBatchSeparate,
     coverArtBackdrop: state.coverArtBackdrop,
+    audienceCoverArtBackdrop: state.audienceCoverArtBackdrop,
     coverArtBackdropBlurPx: state.coverArtBackdropBlurPx,
     coverArtBackdropOpacityPercent: state.coverArtBackdropOpacityPercent,
     lyricsBlurInactive: state.lyricsBlurInactive,
@@ -200,6 +205,7 @@ function applySettingsSyncSnapshot(
     language: snapshot.language,
     hideBatchSeparate: snapshot.hideBatchSeparate,
     coverArtBackdrop: snapshot.coverArtBackdrop,
+    audienceCoverArtBackdrop: snapshot.audienceCoverArtBackdrop,
     coverArtBackdropBlurPx: snapshot.coverArtBackdropBlurPx,
     coverArtBackdropOpacityPercent: snapshot.coverArtBackdropOpacityPercent,
     lyricsBlurInactive: snapshot.lyricsBlurInactive,

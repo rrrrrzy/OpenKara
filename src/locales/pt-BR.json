@@ -602,6 +602,7 @@
       "description": "Oculta o botão da barra lateral que separa todas as músicas."
     },
     "coverArtBackdrop": {
+      "showOnAudienceDisplay": "Mostrar a capa como fundo na tela da plateia",
       "hide": "Desativar o fundo desfocado da capa do álbum",
       "description": "Remove a capa do álbum desfocada atrás da letra.",
       "blur": "Desfoque",
@@ -611,7 +612,7 @@
     },
     "appearance": {
       "label": "Aparência",
-      "description": "Escolha o esquema de cores do aplicativo. O palco da plateia permanece escuro.",
+      "description": "Escolha o esquema de cores do aplicativo.",
       "system": "Sistema",
       "light": "Claro",
       "dark": "Escuro"

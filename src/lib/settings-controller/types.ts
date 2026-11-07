@@ -133,6 +133,7 @@ export interface WritablePreferences {
   executionProvider: ExecutionProvider;
   hideBatchSeparate: boolean;
   coverArtBackdrop: boolean;
+  audienceCoverArtBackdrop: boolean;
   coverArtBackdropBlurPx: number;
   coverArtBackdropOpacityPercent: number | null;
   lyricsBlurInactive: boolean;

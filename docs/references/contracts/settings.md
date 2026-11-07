@@ -12,7 +12,8 @@ Field or command semantic changes must update this document before changing UI c
 | `model_variant` | `"htdemucs"   | "htdemucs_ft"` | Active Demucs model variant |
 | `language` | `string       | null` | App UI language. Once set (OOBE or Settings), every label, error, menu, and progress string uses this code and ignores later OS locale changes. `null` means not chosen yet: the app recommends the system language only until the first explicit choice. |
 | `hide_batch_separate` | `boolean` | Hide batch-separate action in UI |
-| `cover_art_backdrop` | `boolean` | Show blurred cover-art backdrop in player |
+| `cover_art_backdrop` | `boolean` | Show the cover-art backdrop in the main player |
+| `audience_cover_art_backdrop` | `boolean` | Show the cover-art backdrop on the local audience display. Default true. |
 | `cover_art_backdrop_blur_px` | `u8` | Blur radius, 0–80 px. Default 40. |
 | `cover_art_backdrop_opacity_percent` | `u8 or null` | Image opacity, 0–100%. Null uses the theme default: dark 40%, light 55%. |
 | `lyrics_blur_inactive` | `boolean` | Blur past and upcoming lyric lines. Default `false` so singers can read ahead. |
@@ -86,6 +87,7 @@ stays explicitly dark regardless of the primary preference.
 - `set_language(language: String) -> AppSettings`
 - `set_hide_batch_separate(value: bool) -> AppSettings`
 - `set_cover_art_backdrop(value: bool) -> AppSettings`
+- `set_audience_cover_art_backdrop(value: bool) -> AppSettings`
 - `set_cover_art_backdrop_style(blur_px: u8, opacity_percent: Option<u8>) -> AppSettings` — Save both style values in one write. Reject blur above 80 or opacity above 100 before any write. The frontend sends `{ blurPx, opacityPercent }`. Reset sends 40 and null. Old configurations use these defaults. Values apply only to the existing standard lyric backdrop. The theme scrim remains in place.
 - `set_lyrics_blur_inactive(value: bool) -> AppSettings`
 - `set_auto_update_lyrics(value: bool) -> AppSettings`

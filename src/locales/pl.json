@@ -603,6 +603,7 @@
       "description": "Ukryj przycisk panelu bocznego, który rozdziela wszystkie utwory."
     },
     "coverArtBackdrop": {
+      "showOnAudienceDisplay": "Pokaż okładkę jako tło na ekranie dla publiczności",
       "hide": "Wyłącz rozmyte tło z okładki albumu",
       "description": "Usuwa rozmytą okładkę albumu za tekstem.",
       "blur": "Rozmycie",
@@ -612,7 +613,7 @@
     },
     "appearance": {
       "label": "Wygląd",
-      "description": "Wybierz schemat kolorów aplikacji. Ekran dla publiczności pozostaje ciemny.",
+      "description": "Wybierz schemat kolorów aplikacji.",
       "system": "Systemowy",
       "light": "Jasny",
       "dark": "Ciemny"
