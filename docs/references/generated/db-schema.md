@@ -7,7 +7,7 @@ Do **not** edit it by hand. Regenerate after any migration change:
 node scripts/generate-db-schema.mjs
 ```
 
-Source migrations: `001_init.sql`, `002_stems.sql`, `003_lyrics.sql`, `004_portable_paths.sql`, `005_audio_source_kind.sql`, `005_individual_stem_paths.sql`, `006_stem_model_variant.sql`, `007_song_instrumental.sql`, `008_playlists.sql`, `009_singer_rotation.sql`, `010_fts5_songs.sql`, `011_waveforms.sql`, `012_artwork_derivatives.sql`, `013_remote_publish_outbox.sql`, `014_lyrics_word_timed_probe.sql`, `015_streaming_identity.sql`.
+Source migrations: `001_init.sql`, `002_stems.sql`, `003_lyrics.sql`, `004_portable_paths.sql`, `005_audio_source_kind.sql`, `005_individual_stem_paths.sql`, `006_stem_model_variant.sql`, `007_song_instrumental.sql`, `008_playlists.sql`, `009_singer_rotation.sql`, `010_fts5_songs.sql`, `011_waveforms.sql`, `012_artwork_derivatives.sql`, `013_remote_publish_outbox.sql`, `014_lyrics_word_timed_probe.sql`, `015_streaming_identity.sql`, `016_playlist_mix.sql`.
 
 ## `songs`
 
@@ -81,13 +81,15 @@ Created by `008_playlists.sql`.
 
 Created by `008_playlists.sql`.
 
-| Column        | Type      | Notes               |
-| ------------- | --------- | ------------------- |
-| `playlist_id` | `TEXT`    | FK → playlists(id)  |
-| `song_hash`   | `TEXT`    | FK → songs(hash)    |
-| `added_at`    | `INTEGER` | NOT NULL            |
-| `sort_order`  | `INTEGER` | NOT NULL, default 0 |
-| `singer`      | `TEXT`    |                     |
+| Column                 | Type      | Notes               |
+| ---------------------- | --------- | ------------------- |
+| `playlist_id`          | `TEXT`    | FK → playlists(id)  |
+| `song_hash`            | `TEXT`    | FK → songs(hash)    |
+| `added_at`             | `INTEGER` | NOT NULL            |
+| `sort_order`           | `INTEGER` | NOT NULL, default 0 |
+| `singer`               | `TEXT`    |                     |
+| `vocal_volume`         | `REAL`    |                     |
+| `accompaniment_volume` | `REAL`    |                     |
 
 ## `rotation_state`
 
@@ -174,3 +176,4 @@ Created by `015_streaming_identity.sql`.
 14. `013_remote_publish_outbox.sql` — Durable publish change-set stored inside the library SQLite database.
 15. `014_lyrics_word_timed_probe.sql` — ALTER TABLE lyrics ADD COLUMN word_timed_checked_at INTEGER;
 16. `015_streaming_identity.sql` — CREATE TABLE IF NOT EXISTS streaming_track_identities (
+17. `016_playlist_mix.sql` — ALTER TABLE playlist_songs ADD COLUMN vocal_volume REAL CHECK (vocal_volume BETWEEN 0 AND 1);

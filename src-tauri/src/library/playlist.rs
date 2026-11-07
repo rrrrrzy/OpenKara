@@ -11,12 +11,16 @@ pub struct Playlist {
     pub updated_at: i64,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct PlaylistSong {
     pub song_hash: String,
     pub added_at: i64,
     pub sort_order: i64,
     pub singer: Option<String>,
+    #[serde(default)]
+    pub vocal_volume: Option<f32>,
+    #[serde(default)]
+    pub accompaniment_volume: Option<f32>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -214,7 +218,7 @@ pub fn get_playlist_songs(
 ) -> CommandResult<Vec<PlaylistSong>> {
     let mut stmt = conn
         .prepare(
-            "SELECT song_hash, added_at, sort_order, singer \
+            "SELECT song_hash, added_at, sort_order, singer, vocal_volume, accompaniment_volume \
              FROM playlist_songs \
              WHERE playlist_id = ?1 \
              ORDER BY sort_order, added_at",
@@ -227,6 +231,8 @@ pub fn get_playlist_songs(
                 added_at: row.get(1)?,
                 sort_order: row.get(2)?,
                 singer: row.get(3)?,
+                vocal_volume: row.get(4)?,
+                accompaniment_volume: row.get(5)?,
             })
         })
         .map_err(database_error)?
@@ -373,4 +379,52 @@ mod tests {
             .unwrap_or_default();
         assert_eq!(result.as_secs(), 0, "pre-epoch should yield default (0)");
     }
+}
+
+pub fn save_playlist_songs(
+    conn: &mut Connection,
+    playlist_id: &str,
+    expected: &[PlaylistSong],
+    entries: &[PlaylistSong],
+) -> CommandResult<()> {
+    let tx = conn
+        .transaction_with_behavior(TransactionBehavior::Immediate)
+        .map_err(database_error)?;
+    let exists: bool = tx
+        .query_row(
+            "SELECT EXISTS(SELECT 1 FROM playlists WHERE id = ?1)",
+            [playlist_id],
+            |row| row.get(0),
+        )
+        .map_err(database_error)?;
+    if !exists {
+        return Err(database_error("Playlist not found"));
+    }
+    if get_playlist_songs(&tx, playlist_id)? != expected {
+        return Err(database_error("Playlist changed. Reload before saving."));
+    }
+    let mut seen = std::collections::HashSet::new();
+    for entry in entries {
+        if !seen.insert(&entry.song_hash)
+            || [entry.vocal_volume, entry.accompaniment_volume]
+                .iter()
+                .any(|level| level.is_none_or(|v| !v.is_finite() || !(0.0..=1.0).contains(&v)))
+        {
+            return Err(database_error("Invalid playlist entry or volume"));
+        }
+    }
+    tx.execute(
+        "DELETE FROM playlist_songs WHERE playlist_id = ?1",
+        [playlist_id],
+    )
+    .map_err(database_error)?;
+    for (index, entry) in entries.iter().enumerate() {
+        tx.execute("INSERT INTO playlist_songs (playlist_id, song_hash, added_at, sort_order, singer, vocal_volume, accompaniment_volume) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)", rusqlite::params![playlist_id, entry.song_hash, entry.added_at, index as i64, entry.singer, entry.vocal_volume, entry.accompaniment_volume]).map_err(database_error)?;
+    }
+    tx.execute(
+        "UPDATE playlists SET updated_at = ?1 WHERE id = ?2",
+        rusqlite::params![now(), playlist_id],
+    )
+    .map_err(database_error)?;
+    tx.commit().map_err(database_error)
 }

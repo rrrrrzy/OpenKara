@@ -109,3 +109,54 @@ pub fn set_queue_entry_singer(
     let conn = get_connection(&state)?;
     playlist::set_queue_entry_singer(&conn, &playlist_id, &song_hash, singer.as_deref())
 }
+
+#[tauri::command]
+pub fn save_playlist_songs(
+    state: State<'_, AppState>,
+    playlist_id: String,
+    expected: Vec<PlaylistSong>,
+    entries: Vec<PlaylistSong>,
+) -> CommandResult<()> {
+    let mut conn = get_connection(&state)?;
+    playlist::save_playlist_songs(&mut conn, &playlist_id, &expected, &entries)
+}
+
+#[tauri::command]
+pub fn check_playlist_ready(
+    state: State<'_, AppState>,
+    song_hashes: Vec<String>,
+) -> CommandResult<Vec<String>> {
+    let root = state.library_root()?;
+    let conn = get_connection(&state)?;
+    let mut unavailable = Vec::new();
+    for hash in song_hashes {
+        let song = cache::get_song_by_hash(&conn, &hash).map_err(database_error)?;
+        let stems = cache::stems::get_cached_stem_entry(&conn, &hash).map_err(database_error)?;
+        let ready = song.as_ref().is_some_and(|s| {
+            !s.is_remote()
+                && s.file_path
+                    .as_ref()
+                    .is_some_and(|path| root.resolve(path).is_file())
+        }) && stems.is_some_and(|entry| {
+            let mut paths = vec![entry.vocals_path.as_str()];
+            if entry.has_individual_stems() {
+                paths.extend([
+                    entry.drums_path.as_deref().unwrap(),
+                    entry.bass_path.as_deref().unwrap(),
+                    entry.other_path.as_deref().unwrap(),
+                ]);
+            } else {
+                paths.push(&entry.accomp_path);
+            }
+            paths.iter().all(|path| {
+                root.resolve(path)
+                    .metadata()
+                    .is_ok_and(|m| m.is_file() && m.len() > 0)
+            })
+        });
+        if !ready {
+            unavailable.push(hash);
+        }
+    }
+    Ok(unavailable)
+}

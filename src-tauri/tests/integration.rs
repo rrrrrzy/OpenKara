@@ -41,6 +41,7 @@ mod phase7_spectral;
 mod phase7_spectral_bench;
 mod phase7_spectral_session;
 mod phase8_database_lifecycle;
+mod playlist_mix;
 #[cfg(feature = "streaming-sources")]
 mod registry_live_consumer;
 mod remote_config;

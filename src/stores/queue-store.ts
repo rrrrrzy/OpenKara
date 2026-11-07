@@ -1,3 +1,5 @@
+import type { StemVolumes } from "@/types/ipc";
+import type { PlaylistSong } from "@/lib/backend";
 import { create } from "zustand";
 import {
   createWebviewSyncChannel,
@@ -8,9 +10,12 @@ const MAX_PLAY_HISTORY = 500;
 
 interface QueueState {
   queue: string[];
+  playlistPresets?: Record<string, StemVolumes>;
   playHistory: string[];
   isOpen: boolean;
 
+  setPlaylistQueue: (entries: PlaylistSong[]) => void;
+  clearPlaylistPresets: () => void;
   addToQueue: (songId: string) => void;
   playNext: (songId: string) => void;
   removeFromQueue: (index: number) => void;
@@ -28,6 +33,7 @@ interface QueueState {
 
 interface QueueSyncSnapshot {
   queue: string[];
+  playlistPresets?: Record<string, StemVolumes>;
   playHistory: string[];
 }
 
@@ -70,16 +76,46 @@ export function createQueueStore(
       const history = nextHistory ?? get().playHistory;
       if (queuesEqual(get().queue, nextQueue)) {
         set({ playHistory: history });
-        syncChannel.publish({ queue: nextQueue, playHistory: history });
+        syncChannel.publish({
+          queue: nextQueue,
+          playHistory: history,
+          playlistPresets: get().playlistPresets,
+        });
         return;
       }
 
       set({ queue: nextQueue, playHistory: history });
-      syncChannel.publish({ queue: nextQueue, playHistory: history });
+      syncChannel.publish({
+        queue: nextQueue,
+        playHistory: history,
+        playlistPresets: get().playlistPresets,
+      });
     };
 
     return {
       queue: [],
+      playlistPresets: {},
+      clearPlaylistPresets: () => {
+        set({ playlistPresets: {} });
+        syncQueue(get().queue);
+      },
+      setPlaylistQueue: (entries) => {
+        const playlistPresets: Record<string, StemVolumes> = {};
+        for (const entry of entries) {
+          const accompaniment = entry.accompaniment_volume ?? 1;
+          playlistPresets[entry.song_hash] = {
+            vocals: entry.vocal_volume ?? 1,
+            drums: accompaniment,
+            bass: accompaniment,
+            other: accompaniment,
+          };
+        }
+        set({ playlistPresets });
+        syncQueue(
+          entries.map((entry) => entry.song_hash),
+          [],
+        );
+      },
       playHistory: [],
       isOpen: false,
 
@@ -125,7 +161,10 @@ export function createQueueStore(
 
       clearQueue: () => syncQueue([]),
 
-      setQueue: (nextQueue: string[]) => syncQueue(nextQueue),
+      setQueue: (nextQueue: string[]) => {
+        set({ playlistPresets: {} });
+        syncQueue(nextQueue);
+      },
 
       dequeue: () => {
         const { queue } = get();
@@ -162,9 +201,15 @@ export function createQueueStore(
     };
   });
 
-  const unsubscribe = syncChannel.subscribe(({ queue, playHistory }) => {
-    store.setState({ queue, playHistory });
-  });
+  const unsubscribe = syncChannel.subscribe(
+    ({ queue, playHistory, playlistPresets }) => {
+      store.setState({
+        queue,
+        playHistory,
+        playlistPresets: playlistPresets ?? {},
+      });
+    },
+  );
 
   return {
     store,

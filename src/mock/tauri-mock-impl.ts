@@ -991,6 +991,13 @@ export function createTauriMock(data: any): TauriMockResult {
         duration_ms: durationMs,
         buffered_ms: durationMs,
       };
+      if (args?.mix)
+        currentPlaybackSnapshot = {
+          ...currentPlaybackSnapshot,
+          stem_volumes: { ...args.mix },
+          has_stems: true,
+          stem_mode: "two_stem",
+        };
       startPlayhead(positionMs);
       schedulePlaybackEnd();
       return clone(currentPlaybackSnapshot);
@@ -1159,6 +1166,39 @@ export function createTauriMock(data: any): TauriMockResult {
       const playlist = playlists.find((entry) => entry.id === args.playlistId);
       if (playlist) playlist.updated_at = Date.now();
     },
+    save_playlist_songs: (args: {
+      playlistId: string;
+      expected: import("@/lib/backend").PlaylistSong[];
+      entries: import("@/lib/backend").PlaylistSong[];
+    }) => {
+      const current = playlistSongs.get(args.playlistId) ?? [];
+      if (
+        !playlists.some((p) => p.id === args.playlistId) ||
+        JSON.stringify(current) !== JSON.stringify(args.expected)
+      )
+        throw new Error("Playlist changed. Reload before saving.");
+      const seen = new Set<string>();
+      for (const entry of args.entries) {
+        if (
+          seen.has(entry.song_hash) ||
+          [entry.vocal_volume, entry.accompaniment_volume].some(
+            (v) =>
+              typeof v !== "number" || !Number.isFinite(v) || v < 0 || v > 1,
+          )
+        )
+          throw new Error("Invalid playlist entry");
+        seen.add(entry.song_hash);
+      }
+      playlistSongs.set(
+        args.playlistId,
+        args.entries.map((entry, sort_order) => ({ ...entry, sort_order })),
+      );
+    },
+    check_playlist_ready: (args: { songHashes: string[] }) =>
+      args.songHashes.filter(
+        (hash) =>
+          !mockSongs.some((song: { hash: string }) => song.hash === hash),
+      ),
     get_playlist_songs: (args: any) => playlistSongs.get(args.playlistId) || [],
 
     get_rotation_state: () => rotationState,

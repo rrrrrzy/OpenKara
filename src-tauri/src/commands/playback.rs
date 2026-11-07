@@ -41,7 +41,15 @@ pub async fn play(
     state: State<'_, AppState>,
     app_handle: AppHandle,
     song_id: String,
+    mix: Option<crate::audio::playback::StemVolumes>,
 ) -> CommandResult<PlaybackStateSnapshot> {
+    validate_mix(mix)?;
+    if mix.is_some() && catalog::streaming_preview_reference(&song_id).is_some() {
+        return Err(crate::audio::error::PlaybackError::KaraokeNotReady(
+            "Playlist playback requires a local song".into(),
+        )
+        .into());
+    }
     let background_state = state.inner().clone();
     let background_handle = app_handle.clone();
     #[cfg(feature = "streaming-sources")]
@@ -58,7 +66,7 @@ pub async fn play(
         .map_err(|error| internal_error(format!("playback task failed: {error}")))??);
     }
     Ok(tauri::async_runtime::spawn_blocking(move || {
-        services::track_load::start(&background_state, &background_handle, &song_id)
+        services::track_load::start_with_mix(&background_state, &background_handle, &song_id, mix)
     })
     .await
     .map_err(|error| internal_error(format!("playback task failed: {error}")))??)
@@ -147,7 +155,9 @@ pub fn get_audio_peaks(state: State<'_, AppState>) -> AudioPeakSnapshot {
 pub async fn set_preload_candidate(
     state: State<'_, AppState>,
     song_id: Option<String>,
+    mix: Option<crate::audio::playback::StemVolumes>,
 ) -> CommandResult<()> {
+    validate_mix(mix)?;
     let inner = state.inner().clone();
     let app_data_dir = inner.shell.app_data_dir.clone();
 
@@ -195,6 +205,7 @@ pub async fn set_preload_candidate(
         song_id,
         shutdown,
         preload_generation,
+        mix,
     );
 
     Ok(())
@@ -280,4 +291,15 @@ pub async fn get_waveform(
         .map_err(|_| internal_error("waveform computation was cancelled"))?
         .map_err(|_| internal_error(SANITIZED_WAVEFORM_ERROR))?;
     Ok(shared.to_vec())
+}
+
+fn validate_mix(mix: Option<crate::audio::playback::StemVolumes>) -> CommandResult<()> {
+    if mix.is_some_and(|m| {
+        [m.vocals, m.drums, m.bass, m.other]
+            .iter()
+            .any(|v| !v.is_finite() || !(0.0..=1.0).contains(v))
+    }) {
+        return Err(internal_error("Invalid playlist volume"));
+    }
+    Ok(())
 }

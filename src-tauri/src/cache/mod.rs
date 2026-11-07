@@ -121,6 +121,11 @@ pub fn apply_migrations(connection: &Connection) -> rusqlite::Result<()> {
 
     connection.execute_batch(include_str!("../../migrations/008_playlists.sql"))?;
     connection.execute_batch(include_str!("../../migrations/009_singer_rotation.sql"))?;
+    if !column_exists(connection, "playlist_songs", "vocal_volume")? {
+        let transaction = connection.unchecked_transaction()?;
+        transaction.execute_batch(include_str!("../../migrations/016_playlist_mix.sql"))?;
+        transaction.commit()?;
+    }
     // Durable publish change-set for crash recovery across control-DB projection.
     connection.execute_batch(include_str!(
         "../../migrations/013_remote_publish_outbox.sql"

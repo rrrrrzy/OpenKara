@@ -242,6 +242,7 @@ impl Fixture {
                     .load(Ordering::SeqCst),
                 song_id: song_id.to_owned(),
                 ready: Box::new(ReadyTrack::Decoded {
+                    mix: None,
                     audio: dummy_audio(),
                     stems: None,
                     cdg: None,
@@ -479,6 +480,7 @@ fn a_fetch_event_listener_for_a_superseded_request_stops_draining() {
     let fixture = Fixture::new();
     let request = PlaybackRequest::begin(&fixture.state.playback).expect("request");
     let ctx = LoadContext {
+        mix: None,
         state: fixture.state.clone(),
         app_handle: fixture.app.handle().clone(),
         app_data_dir: fixture.state.shell.app_data_dir.clone(),
@@ -540,4 +542,53 @@ fn a_staleness_predicate_tracks_the_request_it_was_built_from() {
         .fetch_add(1, Ordering::SeqCst);
     assert!(!predicate());
     assert!(!request.guard().is_current());
+}
+
+#[test]
+fn playlist_load_requires_stems_before_it_can_install_audio() {
+    use crate::audio::playback::StemVolumes;
+    for with_stems in [false, true] {
+        let fixture = Fixture::new();
+        let id = fixture.add_song("show-song");
+        if with_stems {
+            fixture.add_cached_stems(&id);
+        }
+        let request = PlaybackRequest::begin(&fixture.state.playback).unwrap();
+        let ctx = LoadContext {
+            state: fixture.state.clone(),
+            app_handle: fixture.app.handle().clone(),
+            app_data_dir: fixture.state.shell.app_data_dir.clone(),
+            library_root: fixture.library.clone(),
+            song_id: id.clone(),
+            request,
+            mix: Some(StemVolumes {
+                vocals: 0.0,
+                ..StemVolumes::default()
+            }),
+        };
+        let song = cache::get_song_by_hash(&fixture.open_database(), &id)
+            .unwrap()
+            .unwrap();
+        let result = super::run_load(&ctx, &song);
+        if with_stems {
+            result.unwrap();
+            match fixture.next_command() {
+                PlaybackCommand::InstallReady { ready, .. } => match *ready {
+                    ReadyTrack::Decoded {
+                        mix: Some(mix),
+                        stems: Some(_),
+                        ..
+                    } => assert_eq!(mix.vocals, 0.0),
+                    _ => panic!("show install must carry stems and levels together"),
+                },
+                _ => panic!("expected ready audio"),
+            }
+        } else {
+            assert!(matches!(result, Err(PlaybackError::KaraokeNotReady(_))));
+            assert!(
+                fixture.commands.try_recv().is_err(),
+                "missing stems must not install original audio"
+            );
+        }
+    }
 }

@@ -21,7 +21,7 @@ import { useQueueStore } from "@/stores/queue-store";
 import { songDisplayTitle } from "@/lib/song-display";
 import { getDropIndicatorPosition } from "@/components/Player/queue-dnd";
 import { SortablePlaylistSong } from "./SortablePlaylistSong";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, lazy, useEffect, useMemo, useRef, useState } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { SongListItem } from "./SongListItem";
 import { EmptyLibrary } from "./EmptyLibrary";
@@ -32,6 +32,12 @@ import { usePlaylistStore } from "@/stores/playlist-store";
 import { useSettingsStore } from "@/stores/settings-store";
 import { sortSongs } from "@/lib/song-sort";
 import { buildAlphabetIndex } from "@/lib/alphabet-index";
+
+const PlaylistEditor = lazy(() =>
+  import("./PlaylistEditor").then((module) => ({
+    default: module.PlaylistEditor,
+  })),
+);
 
 const SONG_ROW_ESTIMATE_PX = 68;
 const SONG_ROW_GAP_PX = 4;
@@ -79,6 +85,7 @@ export function SongList({ previewMode = false }: SongListProps = {}) {
   const isSavingOrder = usePlaylistStore((s) => s.isSavingOrder);
   const isReplacingQueue = usePlaylistStore((s) => s.isReplacingQueue);
   const busy = songsLoading || isSavingOrder || isReplacingQueue;
+  const [editingPlaylist, setEditingPlaylist] = useState<string | null>(null);
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
   const sensors = useSensors(
@@ -235,6 +242,26 @@ export function SongList({ previewMode = false }: SongListProps = {}) {
 
   return (
     <div className="relative flex min-h-0 flex-1 flex-col">
+      {editingPlaylist && (
+        <Suspense fallback={null}>
+          <PlaylistEditor
+            playlistId={editingPlaylist}
+            onClose={() => setEditingPlaylist(null)}
+          />
+        </Suspense>
+      )}
+      {activePlaylistId && (
+        <button
+          className="mx-2 mb-2 rounded border border-[var(--color-border)] px-3 py-2 text-sm text-[var(--color-text)] focus-visible:outline-2 focus-visible:outline-[var(--color-accent)] disabled:opacity-40"
+          disabled={busy}
+          onClick={(event) => {
+            event.currentTarget.focus();
+            setEditingPlaylist(activePlaylistId);
+          }}
+        >
+          {t("playlistEditor.title")}
+        </button>
+      )}
       {activePlaylistId && (
         <button
           className="mx-2 mb-2 rounded px-2 py-1 text-sm text-[var(--color-text)] hover:bg-[var(--color-hover)] focus-visible:outline-2 focus-visible:outline-[var(--color-accent)] disabled:opacity-40"

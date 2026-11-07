@@ -16,6 +16,14 @@ pub(super) fn render_crossfade_overlap(
     outgoing_resampler_cache: &mut ResamplerCache,
     incoming_resampler_cache: &mut ResamplerCache,
 ) -> Option<(usize, u64)> {
+    if playback.playlist_mode
+        || playback
+            .prepared_track
+            .as_ref()
+            .is_some_and(|p| p.preset.is_some())
+    {
+        return None;
+    }
     let output_frames = output.len() / device_channels;
     if output_frames == 0 {
         return Some((0, 0));
@@ -252,6 +260,7 @@ mod tests {
             generation: 0,
         };
         let prepared = PreparedTrack {
+            preset: None,
             preload_request_generation: PreloadRequestGeneration(0),
             preload_generation: fmt.generation,
             song_id: "song-b".to_owned(),
@@ -645,6 +654,7 @@ mod tests {
             generation: 0,
         };
         let prepared = PreparedTrack {
+            preset: None,
             preload_request_generation: PreloadRequestGeneration(0),
             preload_generation: fmt.generation,
             song_id: "song-b".to_owned(),
@@ -697,6 +707,7 @@ mod tests {
             generation: 0,
         };
         let prepared = PreparedTrack {
+            preset: None,
             preload_request_generation: PreloadRequestGeneration(0),
             preload_generation: fmt.generation,
             song_id: "song-b".to_owned(),

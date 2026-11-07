@@ -33,6 +33,7 @@ use tauri::{Emitter, Runtime};
 
 pub enum ReadyTrack {
     Decoded {
+        mix: Option<crate::audio::playback::StemVolumes>,
         audio: DecodedAudio,
         stems: Option<LoadedStems>,
         cdg: Option<Arc<[CdgPacket]>>,
@@ -457,6 +458,22 @@ fn handle_install_ready<R: Runtime>(
         return;
     }
 
+    if let ReadyTrack::Decoded {
+        mix: Some(_),
+        stems,
+        ..
+    } = &ready
+    {
+        let valid = stems
+            .as_ref()
+            .ok_or_else(|| PlaybackError::KaraokeNotReady("Playlist stems are missing".into()))
+            .and_then(crate::audio::playback::validate_loaded_stems);
+        if let Err(error) = valid {
+            handle_fail_load(runtime, request_id, song_id, error);
+            return;
+        }
+    }
+
     let (snapshot, cdg, cdg_error) = {
         let Ok(mut playback) = runtime.playback.lock() else {
             eprintln!("coordinator: playback lock poisoned in InstallReady");
@@ -468,18 +485,22 @@ fn handle_install_ready<R: Runtime>(
 
         match ready {
             ReadyTrack::Decoded {
+                mix,
                 audio,
                 stems,
                 cdg,
                 cdg_error,
             } => {
-                let snapshot = playback.start_track(song_id.to_owned(), audio, monotonic_now_ms());
+                playback.start_track(song_id.to_owned(), audio, monotonic_now_ms());
                 if let Some(stems) = stems {
                     if let Err(e) = playback.attach_stems(song_id, stems) {
                         eprintln!("coordinator: failed to attach decoded stems: {e}");
                     }
                 }
-                (snapshot, cdg, cdg_error)
+                if let Some(mix) = mix {
+                    playback.apply_playlist_mix(mix);
+                }
+                (playback.snapshot(), cdg, cdg_error)
             }
             ReadyTrack::Streaming {
                 sample_rate,
@@ -1066,6 +1087,7 @@ mod tests {
             request_id,
             song_id: song_id.to_owned(),
             ready: Box::new(ReadyTrack::Decoded {
+                mix: None,
                 audio: dummy_audio(),
                 stems: None,
                 cdg: None,
@@ -1142,6 +1164,7 @@ mod tests {
             request_id: 1,
             song_id: "song-a".to_owned(),
             ready: Box::new(ReadyTrack::Decoded {
+                mix: None,
                 audio: dummy_audio(),
                 stems: None,
                 cdg: None,
@@ -1468,6 +1491,7 @@ mod tests {
             request_id: 1,
             song_id: "song-a".to_owned(),
             ready: Box::new(ReadyTrack::Decoded {
+                mix: None,
                 audio: dummy_audio(),
                 stems: None,
                 cdg: Some(packets),
@@ -1626,6 +1650,7 @@ mod tests {
             request_id: 1,
             song_id: "song-a".to_owned(),
             ready: Box::new(ReadyTrack::Decoded {
+                mix: None,
                 audio: dummy_audio(),
                 stems: None,
                 cdg: None,
@@ -1711,6 +1736,7 @@ mod tests {
             request_id: 1,
             song_id: "song-a".to_owned(),
             ready: Box::new(ReadyTrack::Decoded {
+                mix: None,
                 audio: dummy_audio(),
                 stems: None,
                 cdg: None,
@@ -1824,6 +1850,7 @@ mod tests {
             request_id: 1,
             song_id: "song-b".to_owned(),
             ready: Box::new(ReadyTrack::Decoded {
+                mix: None,
                 audio: dummy_audio(),
                 stems: None,
                 cdg: None,
@@ -1861,6 +1888,7 @@ mod tests {
             request_id: 1,
             song_id: "song-a".to_owned(),
             ready: Box::new(ReadyTrack::Decoded {
+                mix: None,
                 audio: dummy_audio(),
                 stems: None,
                 cdg: None,
@@ -1908,6 +1936,7 @@ mod tests {
             request_id: 1,
             song_id: "song-a".to_owned(),
             ready: Box::new(ReadyTrack::Decoded {
+                mix: None,
                 audio: dummy_audio(),
                 stems: None,
                 cdg: Some(Arc::from(Vec::new().into_boxed_slice())),

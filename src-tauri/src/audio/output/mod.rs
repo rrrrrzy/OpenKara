@@ -222,16 +222,19 @@ pub fn render_output_buffer(
             {
                 let remaining = &mut output[rendered_samples..];
                 if !remaining.is_empty() {
+                    let volumes = playback.snapshot().stem_volumes;
                     let track = playback.current_track.as_ref().unwrap();
-                    let original = &track.original_audio;
-                    let (extra_rendered, extra_frames) = mix_stem_resampled(
+                    resampler_cache.clear();
+
+                    let (extra_rendered, extra_frames) = render_prepared_tail(
                         remaining,
-                        original,
-                        0,
+                        track,
+                        volumes,
                         master,
+                        mix_scratch,
                         device_sample_rate,
                         device_channels,
-                        Some(resampler_cache),
+                        resampler_cache,
                     );
                     eq_processor.process(remaining, extra_rendered);
                     if eq_processor.is_fully_bypassed() {
@@ -423,16 +426,19 @@ pub fn render_output_buffer(
     {
         let remaining = &mut output[rendered..];
         if !remaining.is_empty() {
+            let volumes = playback.snapshot().stem_volumes;
             let track = playback.current_track.as_ref().unwrap();
-            let original = &track.original_audio;
-            let (extra_rendered, extra_frames) = mix_stem_resampled(
+            resampler_cache.clear();
+
+            let (extra_rendered, extra_frames) = render_prepared_tail(
                 remaining,
-                original,
-                0,
+                track,
+                volumes,
                 master,
+                mix_scratch,
                 device_sample_rate,
                 device_channels,
-                Some(resampler_cache),
+                resampler_cache,
             );
             eq_processor.process(remaining, extra_rendered);
             if eq_processor.is_fully_bypassed() {
@@ -459,6 +465,60 @@ pub fn render_output_buffer(
     }
 
     total_rendered
+}
+
+fn render_prepared_tail(
+    output: &mut [f32],
+    track: &crate::audio::playback::LoadedTrack,
+    volumes: crate::audio::playback::StemVolumes,
+    master: f32,
+    scratch: &mut Vec<f32>,
+    rate: u32,
+    channels: usize,
+    cache: &mut ResamplerCache,
+) -> (usize, u64) {
+    match &track.stems {
+        Some(LoadedStems::TwoStem {
+            vocals,
+            accompaniment,
+        }) => render_decoded_mix_bus(
+            output,
+            &[vocals, accompaniment],
+            &[
+                master * volumes.vocals,
+                master * volumes.drums.max(volumes.bass).max(volumes.other),
+            ],
+            0,
+            scratch,
+            rate,
+            channels,
+            cache,
+        ),
+        Some(LoadedStems::FourStem(stems)) => render_decoded_mix_bus(
+            output,
+            &[&stems.vocals, &stems.drums, &stems.bass, &stems.other],
+            &[
+                master * volumes.vocals,
+                master * volumes.drums,
+                master * volumes.bass,
+                master * volumes.other,
+            ],
+            0,
+            scratch,
+            rate,
+            channels,
+            cache,
+        ),
+        None => mix_stem_resampled(
+            output,
+            &track.original_audio,
+            0,
+            master,
+            rate,
+            channels,
+            Some(cache),
+        ),
+    }
 }
 
 fn finalize_streaming_natural_end(playback: &mut PlaybackController) {
@@ -833,6 +893,7 @@ mod tests {
         let fmt = OutputFormatSnapshot::new(1, sample_rate, channels as u16);
         let track_b_samples = vec![0.5_f32; 512 * channels];
         let prepared = PreparedTrack {
+            preset: None,
             preload_request_generation: crate::audio::playback::PreloadRequestGeneration(0),
             preload_generation: fmt.generation,
             song_id: "song-b".to_owned(),
@@ -937,6 +998,7 @@ mod tests {
 
         let fmt = OutputFormatSnapshot::new(1, sample_rate, channels as u16);
         let make_prepared = |song_id: &str, frames: usize, amplitude: f32| PreparedTrack {
+            preset: None,
             preload_request_generation: PreloadRequestGeneration(0),
             preload_generation: fmt.generation,
             song_id: song_id.to_owned(),
@@ -1032,6 +1094,7 @@ mod tests {
         let fmt = OutputFormatSnapshot::new(1, sample_rate, channels as u16);
         let track_b_samples = vec![0.5_f32; 512 * channels];
         let prepared = PreparedTrack {
+            preset: None,
             preload_request_generation: crate::audio::playback::PreloadRequestGeneration(0),
             preload_generation: fmt.generation,
             song_id: "song-b".to_owned(),
@@ -1139,6 +1202,7 @@ mod tests {
         let fmt = OutputFormatSnapshot::new(1, sample_rate, channels as u16);
         let track_b_samples = vec![0.5_f32; 512 * channels];
         let prepared = PreparedTrack {
+            preset: None,
             preload_request_generation: crate::audio::playback::PreloadRequestGeneration(0),
             preload_generation: fmt.generation,
             song_id: "song-b".to_owned(),
@@ -1311,6 +1375,7 @@ mod tests {
         let fmt = OutputFormatSnapshot::new(1, sample_rate, channels as u16);
         let track_b_samples = vec![0.9_f32; 512 * channels];
         let prepared = PreparedTrack {
+            preset: None,
             preload_request_generation: crate::audio::playback::PreloadRequestGeneration(0),
             preload_generation: fmt.generation,
             song_id: "song-b".to_owned(),
@@ -1455,5 +1520,94 @@ mod tests {
             result.is_ok(),
             "attach_stems must accept stems with matching metadata"
         );
+    }
+    #[test]
+    fn playlist_gapless_tail_uses_incoming_stems_and_gains_from_its_first_sample() {
+        use crate::audio::decode::DecodedAudio;
+        use crate::audio::output_format::OutputFormatSnapshot;
+        use crate::audio::playback::PreparedTrack;
+        use crate::audio::playback::{
+            FadeState, LoadedStems, PlaybackController, StemSet, StemVolumes,
+        };
+        let rate = 44_100;
+        let channels = 2;
+        let decoded = |value, frames| DecodedAudio {
+            sample_rate_hz: rate,
+            channels,
+            duration_ms: 1000,
+            samples: vec![value; frames * channels],
+        };
+        for four_stems in [false, true] {
+            for vocal in [0.0, 0.3, 1.0] {
+                let mut player = PlaybackController::default();
+                player.start_track("outgoing".into(), decoded(0.1, 100), 0);
+                player.fade = FadeState::None;
+                player.apply_playlist_mix(StemVolumes::default());
+                let fmt = OutputFormatSnapshot::new(1, rate, channels as u16);
+                let stems = if four_stems {
+                    LoadedStems::FourStem(StemSet {
+                        vocals: decoded(0.4, 512),
+                        drums: decoded(0.1, 512),
+                        bass: decoded(0.1, 512),
+                        other: decoded(0.1, 512),
+                    })
+                } else {
+                    LoadedStems::TwoStem {
+                        vocals: decoded(0.4, 512),
+                        accompaniment: decoded(0.3, 512),
+                    }
+                };
+                let mix = StemVolumes {
+                    vocals: vocal,
+                    drums: 0.5,
+                    bass: 0.5,
+                    other: 0.5,
+                };
+                player
+                    .install_prepared_track(
+                        PreparedTrack {
+                            preset: Some((stems, mix)),
+                            preload_request_generation:
+                                crate::audio::playback::PreloadRequestGeneration(0),
+                            preload_generation: 1,
+                            song_id: "incoming".into(),
+                            output_format: fmt,
+                            audio: decoded(0.9, 512),
+                        },
+                        fmt,
+                    )
+                    .unwrap();
+                player.set_crossfade_enabled(true).unwrap();
+                let mut output = vec![0.0; 512 * channels];
+                let rendered = render_output_buffer(
+                    &mut player,
+                    &mut output,
+                    &mut Vec::new(),
+                    &mut Vec::new(),
+                    &mut vec![0.0; CROSSFADE_SCRATCH_FRAMES * channels],
+                    rate,
+                    channels,
+                    &mut ResamplerCache::new(),
+                    &mut ResamplerCache::new(),
+                    &mut EqProcessor::new(rate, channels),
+                    &mut crate::audio::peaks::PeakAccumulator::new(),
+                    &crate::audio::peaks::PeakRing::new(),
+                );
+                assert_eq!(rendered, output.len());
+                assert!(output[..200]
+                    .iter()
+                    .all(|sample| (sample - 0.1).abs() < 1e-6));
+                assert!(
+                    output[200..]
+                        .iter()
+                        .all(|sample| (sample - (0.4 * vocal + 0.15)).abs() < 1e-6),
+                    "incoming track must never render original audio or outgoing levels"
+                );
+                assert_eq!(player.snapshot().stem_volumes, mix);
+                assert!(player.active_crossfade.is_none());
+                player.start_track("ordinary".into(), decoded(0.2, 512), 0);
+                assert!(!player.playlist_mode);
+            }
+        }
     }
 }

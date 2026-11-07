@@ -170,6 +170,7 @@ fn prepare_next_track(
     );
 
     Ok(PreparedTrack {
+        preset: None,
         preload_request_generation,
         preload_generation: output_format.generation,
         song_id: song.hash.clone(),
@@ -193,6 +194,7 @@ pub fn spawn_preload_next(
     song_id: String,
     shutdown: Arc<AtomicBool>,
     preload_request_generation: crate::audio::playback::PreloadRequestGeneration,
+    mix: Option<crate::audio::playback::StemVolumes>,
 ) {
     std::thread::spawn(move || {
         if shutdown.load(Ordering::Relaxed) {
@@ -247,7 +249,7 @@ pub fn spawn_preload_next(
             None => return,
         };
 
-        let prepared = match prepare_next_track(
+        let mut prepared = match prepare_next_track(
             &app_data_dir,
             &connection,
             &library_root,
@@ -262,6 +264,49 @@ pub fn spawn_preload_next(
             }
         };
 
+        if let Some(mix) = mix {
+            match crate::services::track_load::source::load_cached_stems_for_song(
+                Some(&app_data_dir),
+                &connection,
+                &library_root,
+                &song,
+                0,
+                || !shutdown.load(Ordering::Relaxed),
+            ) {
+                Ok(stems) => {
+                    if crate::audio::playback::validate_loaded_stems(&stems).is_err() {
+                        return;
+                    }
+                    use crate::audio::playback::LoadedStems;
+                    let normalize = |audio| {
+                        normalize_to_output_format(
+                            audio,
+                            output_format.sample_rate_hz,
+                            output_format.channels as usize,
+                        )
+                    };
+                    let stems = match stems {
+                        LoadedStems::TwoStem {
+                            vocals,
+                            accompaniment,
+                        } => LoadedStems::TwoStem {
+                            vocals: normalize(vocals),
+                            accompaniment: normalize(accompaniment),
+                        },
+                        LoadedStems::FourStem(stems) => {
+                            LoadedStems::FourStem(crate::audio::playback::StemSet {
+                                vocals: normalize(stems.vocals),
+                                drums: normalize(stems.drums),
+                                bass: normalize(stems.bass),
+                                other: normalize(stems.other),
+                            })
+                        }
+                    };
+                    prepared.preset = Some((stems, mix));
+                }
+                Err(_) => return,
+            }
+        }
         if shutdown.load(Ordering::Relaxed) {
             return;
         }

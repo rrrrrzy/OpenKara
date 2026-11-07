@@ -9,6 +9,7 @@ export function usePreloadCandidateEffect(enabled: boolean) {
   const currentSongId =
     usePlayerStore((state) => state.snapshot?.song_id) ?? null;
   const queue = useQueueStore((state) => state.queue);
+  const presets = useQueueStore((state) => state.playlistPresets);
   const nextCandidate = (() => {
     if (queue.length === 0) return null;
     if (queue[0] === currentSongId) {
@@ -19,6 +20,10 @@ export function usePreloadCandidateEffect(enabled: boolean) {
 
   useEffect(() => {
     if (!enabled) return;
-    backend.playback.setPreloadCandidate(nextCandidate).catch(notifyError);
-  }, [backend, enabled, nextCandidate]);
+    const mix = nextCandidate ? presets?.[nextCandidate] : undefined;
+    const pending = mix
+      ? backend.playback.setPreloadCandidate(nextCandidate, mix)
+      : backend.playback.setPreloadCandidate(nextCandidate);
+    pending.catch(notifyError);
+  }, [backend, enabled, nextCandidate, presets]);
 }

@@ -8,7 +8,8 @@ import type { InvokeCommand } from "./invoke";
 
 export function createPlaybackCommands(invoke: InvokeCommand): PlaybackBackend {
   return {
-    play: (songId) => invoke<PlaybackStateSnapshot>("play", { songId }),
+    play: (songId, mix) =>
+      invoke<PlaybackStateSnapshot>("play", mix ? { songId, mix } : { songId }),
 
     resume: () => invoke<PlaybackStateSnapshot>("resume"),
 
@@ -33,8 +34,8 @@ export function createPlaybackCommands(invoke: InvokeCommand): PlaybackBackend {
       return { peaks, buckets: peaks.length };
     },
 
-    setPreloadCandidate: (songId) =>
-      invoke<void>("set_preload_candidate", { songId }),
+    setPreloadCandidate: (songId, mix) =>
+      invoke<void>("set_preload_candidate", mix ? { songId, mix } : { songId }),
 
     syncAirPlayRoutePicker: (bounds) =>
       invoke<void>("sync_airplay_route_picker", { bounds }),

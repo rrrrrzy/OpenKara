@@ -328,6 +328,30 @@ describe("queue-store webview sync", () => {
     expect(secondary.store.getState().queue).toEqual(["song-a", "song-b"]);
     expect(secondary.store.getState().playHistory).toEqual(["song-0"]);
 
+    primary.store.getState().setPlaylistQueue([
+      {
+        song_hash: "show-song",
+        added_at: 1,
+        sort_order: 0,
+        singer: null,
+        vocal_volume: 0,
+        accompaniment_volume: 0.85,
+      },
+    ]);
+    expect(secondary.store.getState().playlistPresets?.["show-song"]).toEqual({
+      vocals: 0,
+      drums: 0.85,
+      bass: 0.85,
+      other: 0.85,
+    });
+    secondary.store.getState().dequeue();
+    secondary.store.getState().pushToHistory("show-song");
+    expect(primary.store.getState().playlistPresets?.["show-song"].vocals).toBe(
+      0,
+    );
+    primary.store.getState().clearPlaylistPresets();
+    expect(secondary.store.getState().playlistPresets).toEqual({});
+
     primary.dispose();
     secondary.dispose();
   });

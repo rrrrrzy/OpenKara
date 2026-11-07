@@ -207,6 +207,8 @@ pub fn run() {
             commands::playlist::add_songs_to_playlist,
             commands::playlist::remove_songs_from_playlist,
             commands::playlist::get_playlist_songs,
+            commands::playlist::save_playlist_songs,
+            commands::playlist::check_playlist_ready,
             commands::playlist::reorder_playlist_songs,
             commands::playlist::set_rotation_state,
             commands::playlist::get_rotation_state,

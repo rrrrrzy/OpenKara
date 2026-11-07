@@ -80,7 +80,7 @@ pub enum LoadedStems {
     FourStem(StemSet),
 }
 
-fn validate_loaded_stems(stems: &LoadedStems) -> Result<(), PlaybackError> {
+pub(crate) fn validate_loaded_stems(stems: &LoadedStems) -> Result<(), PlaybackError> {
     match stems {
         LoadedStems::TwoStem {
             vocals,
@@ -177,6 +177,7 @@ pub(crate) struct LoadedTrack {
 
 #[derive(Debug)]
 pub struct PreparedTrack {
+    pub preset: Option<(LoadedStems, StemVolumes)>,
     pub preload_request_generation: PreloadRequestGeneration,
     pub preload_generation: u64,
     pub song_id: String,
@@ -239,6 +240,7 @@ pub struct PlaybackController {
     transport_generation: u64,
     volume: f32,
     stem_volumes: StemVolumes,
+    pub(crate) playlist_mode: bool,
     pub(crate) is_buffering: bool,
     pub(crate) fade: FadeState,
     pub(crate) eq_config: crate::audio::eq::EqConfig,
@@ -260,6 +262,7 @@ impl Default for PlaybackController {
             transport_generation: 0,
             volume: 1.0,
             stem_volumes: StemVolumes::default(),
+            playlist_mode: false,
             is_buffering: false,
             fade: FadeState::None,
             eq_config: crate::audio::eq::EqConfig::flat(),
@@ -290,6 +293,7 @@ impl PlaybackController {
         _now_ms: u64,
     ) -> PlaybackStateSnapshot {
         self.loading_song_id = None;
+        self.playlist_mode = false;
         let is_playing = !std::mem::take(&mut self.pause_when_loaded);
         self.cancel_crossfade_and_prepared();
         self.current_track = Some(LoadedTrack {
@@ -313,6 +317,7 @@ impl PlaybackController {
         _now_ms: u64,
     ) -> PlaybackStateSnapshot {
         self.loading_song_id = None;
+        self.playlist_mode = false;
         let is_playing = !std::mem::take(&mut self.pause_when_loaded);
         self.cancel_crossfade_and_prepared();
         self.current_track = Some(LoadedTrack {
@@ -427,6 +432,11 @@ impl PlaybackController {
     pub fn set_volume(&mut self, level: f32) -> Result<PlaybackStateSnapshot, PlaybackError> {
         self.volume = level.clamp(0.0, 1.0);
         Ok(self.snapshot())
+    }
+
+    pub fn apply_playlist_mix(&mut self, mix: StemVolumes) {
+        self.stem_volumes = mix;
+        self.playlist_mode = true;
     }
 
     pub fn set_stem_volume(
@@ -756,6 +766,9 @@ impl PlaybackController {
         prepared: PreparedTrack,
         current_output_format: OutputFormatSnapshot,
     ) -> Result<(), PlaybackError> {
+        if let Some((stems, _)) = &prepared.preset {
+            validate_loaded_stems(stems)?;
+        }
         if prepared.audio.sample_rate_hz == 0 || prepared.audio.channels == 0 {
             return Err(PlaybackError::AudioDecodeFailed(format!(
                 "prepared track {} has unusable audio metadata (sample_rate={}, channels={})",
@@ -942,10 +955,18 @@ impl PlaybackController {
         // jump from silence straight to full amplitude.
         let preserve_fade_in = matches!(self.fade, FadeState::FadingIn { .. });
 
+        let (stems, mix) = match prepared.preset {
+            Some((stems, mix)) => (Some(stems), Some(mix)),
+            None => (None, None),
+        };
+        self.playlist_mode = mix.is_some();
+        if let Some(mix) = mix {
+            self.stem_volumes = mix;
+        }
         self.current_track = Some(LoadedTrack {
             song_id: prepared.song_id,
             original_audio: prepared.audio,
-            stems: None,
+            stems,
             is_playing: true,
             render_frame: 0,
             streaming: None,
@@ -978,10 +999,18 @@ impl PlaybackController {
         let to_song_id = prepared.song_id.clone();
         let preload_generation = prepared.preload_generation;
 
+        let (stems, mix) = match prepared.preset {
+            Some((stems, mix)) => (Some(stems), Some(mix)),
+            None => (None, None),
+        };
+        self.playlist_mode = mix.is_some();
+        if let Some(mix) = mix {
+            self.stem_volumes = mix;
+        }
         self.current_track = Some(LoadedTrack {
             song_id: prepared.song_id,
             original_audio: prepared.audio,
-            stems: None,
+            stems,
             is_playing: true,
             render_frame: incoming_frame_offset,
             streaming: None,
@@ -1594,6 +1623,7 @@ mod tests {
         output_format: super::OutputFormatSnapshot,
     ) -> super::PreparedTrack {
         super::PreparedTrack {
+            preset: None,
             preload_request_generation: super::PreloadRequestGeneration(preload_request_generation),
             preload_generation: output_format.generation,
             song_id: song_id.to_owned(),

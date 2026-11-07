@@ -78,6 +78,7 @@ vi.mock("@/stores/library-store", () => ({
 vi.mock("@/stores/queue-store", () => ({
   useQueueStore: {
     getState: () => ({
+      clearPlaylistPresets: vi.fn(),
       addToQueue: mockAddToQueue,
       dequeue: mockDequeue,
       pushToHistory: mockPushToHistory,

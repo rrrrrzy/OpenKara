@@ -539,3 +539,23 @@ A mismatch in `songId` or `transportGeneration` returns 0 bytes and does not mut
 ```
 
 Returns `{ availability: "none" }` if no CDG is active or the song/generation doesn't match the backend's current CDG slot.
+
+## Playlist mix presets
+
+`play({ songId, mix? })` and `set_preload_candidate({ songId, mix? })`
+accept an optional `mix` object with `vocals`, `drums`, `bass`, and `other`.
+Each field is a finite linear gain from 0 to 1. The Playlist UI assigns the
+same accompaniment gain to drums, bass, and other. Omission preserves ordinary
+playback behavior and the original command response shape.
+
+A preset requires a local library song and decoded stems before output.
+Installation applies stems and gains together. Preload failure leaves normal
+end-of-track advancement to attempt the same preset. If that load fails,
+`playback-error` identifies the song. Original audio is never a substitute for
+required stems. Gapless promotion applies incoming gains inside the audio
+callback, including samples after a swap within one buffer. Show tracks
+suppress crossfade without a write to the saved crossfade preference.
+
+The queue sync snapshot adds optional `playlistPresets`, keyed by song ID,
+with the same mix objects. Missing data means no presets. The map travels with
+the queue and history and is not persisted across application restarts.

@@ -46,6 +46,9 @@ interface PlayerState {
   airPlayPlainTextPagePending: boolean;
   airPlayPlainTextPagePendingDirection: "prev" | "next" | null;
 
+  startPlaylist: (
+    entries: import("@/lib/backend").PlaylistSong[],
+  ) => Promise<void>;
   playSong: (songId: string) => Promise<void>;
   playNow: (songId: string) => Promise<void>;
   resume: () => Promise<void>;
@@ -160,7 +163,15 @@ export function createPlayerStore(
   ),
   backend: Backend = tauriBackend,
 ) {
-  const sessionTransport: PlaybackTransport = backend.playback;
+  const sessionTransport: PlaybackTransport = {
+    ...backend.playback,
+    play: (songId) => {
+      const mix = useQueueStore.getState().playlistPresets?.[songId];
+      return mix
+        ? backend.playback.play(songId, mix)
+        : backend.playback.play(songId);
+    },
+  };
 
   let airPlayPlainTextPagePendingTimer: ReturnType<typeof setTimeout> | null =
     null;
@@ -235,6 +246,16 @@ export function createPlayerStore(
       airPlayPlainTextPagePending: false,
       airPlayPlainTextPagePendingDirection: null,
 
+      startPlaylist: async (entries) => {
+        if (!entries.length) return;
+        await backend.playback.setPreloadCandidate(null);
+        useQueueStore.getState().setPlaylistQueue(entries);
+        const first = useQueueStore.getState().dequeue();
+        if (first) {
+          await session.playNow(first);
+          useQueueStore.getState().clearHistory();
+        }
+      },
       playSong: async (songId) => {
         try {
           await session.play(songId);
@@ -244,6 +265,7 @@ export function createPlayerStore(
       },
 
       playNow: async (songId) => {
+        useQueueStore.getState().clearPlaylistPresets();
         try {
           await session.playNow(songId);
         } catch (e) {
@@ -360,6 +382,14 @@ export function createPlayerStore(
 
       skipBack: async () => {
         try {
+          const queue = useQueueStore.getState();
+          const currentId = get().snapshot?.song_id;
+          if (
+            currentId &&
+            queue.playlistPresets?.[currentId] &&
+            queue.playHistory.length
+          )
+            queue.playNext(currentId);
           await session.skipBack();
         } catch (e) {
           notifyError(e);

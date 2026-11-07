@@ -45,6 +45,15 @@ pub fn start<R: Runtime>(
     app_handle: &AppHandle<R>,
     song_id: &str,
 ) -> Result<PlaybackStateSnapshot, PlaybackError> {
+    start_with_mix(state, app_handle, song_id, None)
+}
+
+pub fn start_with_mix<R: Runtime>(
+    state: &AppState,
+    app_handle: &AppHandle<R>,
+    song_id: &str,
+    mix: Option<crate::audio::playback::StemVolumes>,
+) -> Result<PlaybackStateSnapshot, PlaybackError> {
     let library_root = state
         .shell
         .library_root()
@@ -64,6 +73,7 @@ pub fn start<R: Runtime>(
         library_root,
         song_id: song.hash.clone(),
         request,
+        mix,
     };
 
     let (reply_tx, reply_rx) = tokio::sync::oneshot::channel();
@@ -157,6 +167,7 @@ struct LoadContext<R: Runtime> {
     library_root: LibraryRoot,
     song_id: String,
     request: PlaybackRequest,
+    mix: Option<crate::audio::playback::StemVolumes>,
 }
 
 impl<R: Runtime> Clone for LoadContext<R> {
@@ -168,6 +179,7 @@ impl<R: Runtime> Clone for LoadContext<R> {
             library_root: self.library_root.clone(),
             song_id: self.song_id.clone(),
             request: self.request.clone(),
+            mix: self.mix,
         }
     }
 }
@@ -214,6 +226,16 @@ fn open_library_database(library_root: &LibraryRoot) -> Result<Connection, Playb
 fn run_load<R: Runtime>(ctx: &LoadContext<R>, song: &Song) -> Result<(), PlaybackError> {
     if ctx.request.is_cancelled() {
         return Ok(());
+    }
+
+    if ctx.mix.is_some() {
+        if song.is_remote() {
+            return Err(PlaybackError::KaraokeNotReady(
+                "Playlist playback requires a local song".to_owned(),
+            ));
+        }
+        let connection = ctx.open_database()?;
+        return install_decoded(ctx, &connection, song);
     }
 
     let chunk_cache = ctx
@@ -334,9 +356,22 @@ fn install_decoded<R: Runtime>(
         return Ok(());
     }
 
+    let stems = if ctx.mix.is_some() {
+        Some(source::load_cached_stems_for_song(
+            Some(&ctx.app_data_dir),
+            connection,
+            &ctx.library_root,
+            song,
+            ctx.request.id(),
+            ctx.guard().predicate(),
+        )?)
+    } else {
+        stems
+    };
     let (cdg, cdg_error) = load_cdg_packets(&ctx.library_root, song);
 
     ctx.install(ReadyTrack::Decoded {
+        mix: ctx.mix,
         audio: decoded_audio,
         stems,
         cdg,

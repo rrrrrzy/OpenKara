@@ -60,6 +60,7 @@ import type {
   Song,
   SongProperties,
   StemName,
+  StemVolumes,
   ThemePreference,
   UpdatePolicy,
   UploadStatusSnapshot,
@@ -93,6 +94,8 @@ export interface PlaylistSong {
   added_at: number;
   sort_order: number;
   singer: string | null;
+  vocal_volume?: number | null;
+  accompaniment_volume?: number | null;
 }
 
 export interface RotationState {
@@ -124,7 +127,7 @@ export interface CdgStatus {
 export type PlainTextPageDirection = "prev" | "next";
 
 export interface PlaybackBackend {
-  play(songId: string): Promise<PlaybackStateSnapshot>;
+  play(songId: string, mix?: StemVolumes): Promise<PlaybackStateSnapshot>;
   resume(): Promise<PlaybackStateSnapshot>;
   pause(): Promise<PlaybackStateSnapshot>;
   seek(ms: number): Promise<PlaybackStateSnapshot>;
@@ -134,7 +137,7 @@ export interface PlaybackBackend {
   getPlaybackState(): Promise<PlaybackStateSnapshot>;
   getAudioPeaks(): Promise<AudioPeakSnapshot>;
   getWaveform(hash: string, buckets?: number): Promise<WaveformData>;
-  setPreloadCandidate(songId: string | null): Promise<void>;
+  setPreloadCandidate(songId: string | null, mix?: StemVolumes): Promise<void>;
   syncAirPlayRoutePicker(
     bounds: AirPlayRoutePickerBounds | null,
   ): Promise<void>;
@@ -333,6 +336,12 @@ export interface PlaylistBackend {
   ): Promise<void>;
   reorderPlaylistSongs(playlistId: string, songHashes: string[]): Promise<void>;
   getPlaylistSongs(playlistId: string): Promise<PlaylistSong[]>;
+  savePlaylistSongs(
+    playlistId: string,
+    expected: PlaylistSong[],
+    entries: PlaylistSong[],
+  ): Promise<void>;
+  checkPlaylistReady(songHashes: string[]): Promise<string[]>;
   setRotationState(rotation: RotationState): Promise<void>;
   getRotationState(): Promise<RotationState>;
   advanceRotation(): Promise<RotationState>;
