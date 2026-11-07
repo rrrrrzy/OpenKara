@@ -70,7 +70,7 @@ fn playback_controller_transitions_pause_seek_and_volume() {
 }
 
 #[test]
-fn playback_controller_advances_and_stops_at_track_end() {
+fn playback_controller_clamps_the_position_reported_by_a_snapshot() {
     let decoded =
         decode::decode_file(PathBuf::from(fixture_path("audio", "fixture.wav")).as_path()).unwrap();
     let mut controller = PlaybackController::default();
@@ -83,7 +83,7 @@ fn playback_controller_advances_and_stops_at_track_end() {
     let advanced = controller.snapshot();
     assert_snapshot(&advanced, Some("song-a"), true, 400);
 
-    // Advance past the 1-second duration — should clamp and stop
+    // Only the output callback can complete playback. A snapshot clamps the position.
     controller.advance_render_frame(44_100);
     let ended = controller.snapshot();
     assert!(ended.duration_ms.is_some());
@@ -91,7 +91,7 @@ fn playback_controller_advances_and_stops_at_track_end() {
         ended.position_ms,
         ended.duration_ms.expect("duration should exist")
     );
-    assert!(!ended.is_playing);
+    assert!(ended.is_playing);
 }
 
 #[test]

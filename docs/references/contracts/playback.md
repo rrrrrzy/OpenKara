@@ -363,10 +363,11 @@ playing ↔ playing（pause/resume，通过 isPlaying 区分）
 
 **Semantics**
 
-1. Emitted when the current track reaches EOF and no prepared track is available for gapless transition
-2. The frontend uses this event to advance the queue and load the next song
-3. The `songId` field lets the frontend guard against stale events from a previous transport
-4. This event is not emitted when a gapless transition occurs; `track-transitioned` covers that path
+1. Emitted once after the audio output detects natural EOF and does not complete a gapless transition
+2. The backend publishes the stopped playback position before this event
+3. The frontend uses this event to advance the queue and load the next song
+4. The `songId` field lets the frontend guard against stale events from a previous transport
+5. This event is not emitted when a gapless transition occurs; `track-transitioned` covers that path
 
 ### Event: `remote-playback-reconnect` (#151)
 

@@ -138,16 +138,11 @@ pub fn render_output_buffer(
     if playback.is_buffering {
         return 0;
     }
-    // Still render during FadingOut (envelope) and FadingIn (EOF resume must
-    // reach the gapless swap; snapshot may report is_playing=false at EOF).
+    // The pause snapshot reports stopped while the fade-out still renders.
     if !snapshot.is_playing
         && !matches!(
             playback.fade,
             crate::audio::playback::FadeState::FadingOut { .. }
-        )
-        && !matches!(
-            playback.fade,
-            crate::audio::playback::FadeState::FadingIn { .. }
         )
     {
         return 0;
@@ -215,11 +210,7 @@ pub fn render_output_buffer(
             playback.advance_render_frame(src_frames_advanced);
 
             let mut total_rendered = rendered_samples;
-            if !has_streaming
-                && playback.current_track_reached_eof()
-                && playback.current_track_is_playing()
-                && playback.perform_gapless_swap()
-            {
+            if playback.finish_or_swap_at_eof() {
                 let remaining = &mut output[rendered_samples..];
                 if !remaining.is_empty() {
                     let volumes = playback.snapshot().stem_volumes;
@@ -413,17 +404,8 @@ pub fn render_output_buffer(
 
     playback.advance_render_frame(src_frames_advanced);
 
-    if has_streaming {
-        finalize_streaming_natural_end(playback);
-    }
-
     let mut total_rendered = rendered;
-    // Skip gapless swap while paused / FadingOut (EOF during pause must not advance).
-    if !has_streaming
-        && playback.current_track_reached_eof()
-        && playback.current_track_is_playing()
-        && playback.perform_gapless_swap()
-    {
+    if playback.finish_or_swap_at_eof() {
         let remaining = &mut output[rendered..];
         if !remaining.is_empty() {
             let volumes = playback.snapshot().stem_volumes;
@@ -521,15 +503,135 @@ fn render_prepared_tail(
     }
 }
 
-fn finalize_streaming_natural_end(playback: &mut PlaybackController) {
-    playback.finalize_streaming_natural_end();
-}
-
 #[cfg(test)]
 mod tests {
     use super::{render_output_buffer, ResamplerCache};
     use crate::audio::crossfade::CROSSFADE_SCRATCH_FRAMES;
     use crate::audio::eq::EqProcessor;
+
+    #[test]
+    fn decoded_stems_finish_at_eof_independent_of_reported_duration() {
+        use crate::audio::decode::DecodedAudio;
+        use crate::audio::peaks::{PeakAccumulator, PeakRing};
+        use crate::audio::playback::{LoadedStems, PlaybackController};
+
+        let sample_rate = 44_100;
+        let frames = 44_143;
+        let make_audio = |duration_ms| DecodedAudio {
+            sample_rate_hz: sample_rate,
+            channels: 1,
+            duration_ms,
+            samples: vec![0.25; frames],
+        };
+
+        for duration_ms in [1_000, 1_001] {
+            let mut controller = PlaybackController::default();
+            controller.start_track("song-a".into(), make_audio(duration_ms), 0);
+            controller
+                .attach_stems(
+                    "song-a",
+                    LoadedStems::TwoStem {
+                        vocals: make_audio(1_001),
+                        accompaniment: make_audio(1_001),
+                    },
+                )
+                .unwrap();
+            controller.advance_render_frame(44_100);
+            assert!(controller.snapshot().is_playing);
+
+            let mut output = [0.0; 64];
+            let mut mix_scratch = Vec::new();
+            let mut resampler = ResamplerCache::new();
+            let mut incoming_resampler = ResamplerCache::new();
+            let mut eq = EqProcessor::new(sample_rate, 1);
+            let mut peaks = PeakAccumulator::new();
+            let ring = PeakRing::new();
+            let mut render = |controller: &mut PlaybackController| {
+                render_output_buffer(
+                    controller,
+                    &mut output,
+                    &mut Vec::new(),
+                    &mut mix_scratch,
+                    &mut [],
+                    sample_rate,
+                    1,
+                    &mut resampler,
+                    &mut incoming_resampler,
+                    &mut eq,
+                    &mut peaks,
+                    &ring,
+                )
+            };
+
+            assert_eq!(render(&mut controller), 43);
+            let stopped = controller.snapshot();
+            assert_eq!(stopped.position_ms, 1_000);
+            assert!(!stopped.is_playing);
+            assert_eq!(controller.drain_natural_end().unwrap().song_id, "song-a");
+            assert_eq!(render(&mut controller), 0);
+            assert!(controller.drain_natural_end().is_none());
+        }
+    }
+
+    #[test]
+    fn streaming_eof_drains_uneven_stem_tails_and_completes_unknown_duration() {
+        use crate::audio::peaks::{PeakAccumulator, PeakRing};
+        use crate::audio::playback::PlaybackController;
+        use crate::audio::streaming::{create_stream_pair, StreamingTrack};
+
+        let sample_rate = 1_000;
+        let (mut vocals_producer, vocals) = create_stream_pair(sample_rate, 1);
+        let (mut accompaniment_producer, accompaniment) = create_stream_pair(sample_rate, 1);
+        assert_eq!(vocals_producer.push_samples(&[0.25; 2]), 2);
+        assert_eq!(accompaniment_producer.push_samples(&[0.5; 3]), 3);
+        vocals_producer.set_eof();
+        accompaniment_producer.set_eof();
+        let mut controller = PlaybackController::default();
+        controller.start_track_streaming(
+            "song-a".into(),
+            sample_rate,
+            1,
+            0,
+            StreamingTrack::TwoStem {
+                vocals,
+                accompaniment,
+            },
+            0,
+        );
+        let mut output = [0.0; 2];
+        let mut scratch = Vec::new();
+        let mut mix = Vec::new();
+        let mut resampler = ResamplerCache::new();
+        let mut incoming_resampler = ResamplerCache::new();
+        let mut eq = EqProcessor::new(sample_rate, 1);
+        let mut peaks = PeakAccumulator::new();
+        let ring = PeakRing::new();
+        let mut render = |controller: &mut PlaybackController| {
+            render_output_buffer(
+                controller,
+                &mut output,
+                &mut scratch,
+                &mut mix,
+                &mut [],
+                sample_rate,
+                1,
+                &mut resampler,
+                &mut incoming_resampler,
+                &mut eq,
+                &mut peaks,
+                &ring,
+            )
+        };
+
+        assert_eq!(render(&mut controller), 2);
+        assert!(controller.drain_natural_end().is_none());
+        assert_eq!(render(&mut controller), 1);
+        let stopped = controller.snapshot();
+        assert_eq!(stopped.duration_ms, Some(3));
+        assert_eq!(stopped.position_ms, 3);
+        assert!(!stopped.is_playing);
+        assert_eq!(controller.drain_natural_end().unwrap().song_id, "song-a");
+    }
 
     #[test]
     fn bypassed_eq_hard_clamps_multistem_summation() {
@@ -1160,6 +1262,7 @@ mod tests {
             controller.pending_transition_out.is_none(),
             "no CompletedTransition must be queued while paused at EOF"
         );
+        assert!(controller.drain_natural_end().is_none());
 
         // The tail (after track A's 100 frames) must contain no
         // samples from track B (0.5 amplitude). It should be silence.
@@ -1311,6 +1414,7 @@ mod tests {
             .expect("exactly one CompletedTransition after resume swap");
         assert_eq!(transition.from_song_id, "song-a");
         assert_eq!(transition.to_song_id, "song-b");
+        assert!(controller.drain_natural_end().is_none());
         assert!(
             controller.drain_pending_transition().is_none(),
             "must not queue a second transition after resume swap"

@@ -332,8 +332,8 @@ fn resample_mix_to_output(
     (max_out_frames * device_channels, real_frames as u64)
 }
 
-/// Source-domain mix bus: every stem (including muted) pops the same frame
-/// range, then one resample. Prevents inter-stem drift when a stem is muted.
+/// Mix stems over the same source frame range, then resample once. A stem
+/// that reaches EOF supplies silence after its last frame.
 pub(super) fn render_streaming_mix_bus(
     output: &mut [f32],
     consumers: &mut [&mut crate::audio::streaming::AudioConsumer],
@@ -365,9 +365,16 @@ pub(super) fn render_streaming_mix_bus(
     };
 
     let mut budget = input_needed;
+    let mut max_available = 0;
     for consumer in consumers.iter() {
-        budget = budget.min(consumer.available_src_frames());
+        let eof = consumer.is_eof();
+        let available = consumer.available_src_frames();
+        max_available = max_available.max(available);
+        if !eof {
+            budget = budget.min(available);
+        }
     }
+    let budget = budget.min(max_available);
 
     if budget == 0 {
         return (0, 0);

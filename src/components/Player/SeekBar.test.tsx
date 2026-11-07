@@ -488,6 +488,24 @@ describe("SeekBar", () => {
     expect(startLabel?.textContent).toContain("0:42");
   });
 
+  test("caps elapsed time, fill, and slider value at the track duration", () => {
+    let tick: FrameRequestCallback | undefined;
+    vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
+      tick = callback;
+      return 1;
+    });
+    mockSelectCurrentPositionMs.mockReturnValue(103_000);
+
+    act(() => root.render(<SeekBar />));
+    act(() => tick?.(16));
+
+    const slider = host.querySelector('[role="slider"]');
+    expect(slider?.getAttribute("aria-valuenow")).toBe("100000");
+    expect(slider?.getAttribute("aria-valuetext")).toBe("1:40");
+    expect(slider?.querySelector("div")?.style.width).toBe("100%");
+    expect(host.querySelector("span")?.textContent).toBe("1:40");
+  });
+
   test("cancels rAF and disconnects ResizeObserver on unmount", () => {
     const cancelSpy = vi.fn();
     const disconnectSpy = vi.fn();

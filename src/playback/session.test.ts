@@ -293,7 +293,7 @@ describe("createPlaybackSession", () => {
 
       await session.onEnded("ended-song");
 
-      expect(deps.queue.dequeue).toHaveBeenCalled();
+      expect(deps.queue.dequeue).toHaveBeenCalledTimes(1);
       expect(deps.queue.pushToHistory).toHaveBeenCalledWith("ended-song");
       expect(deps.transport.play).toHaveBeenCalledWith("next-song");
     });
@@ -311,10 +311,13 @@ describe("createPlaybackSession", () => {
     test("does nothing when queue is empty", async () => {
       const deps = mockDeps();
       const session = createPlaybackSession(deps);
-      session.applySnapshot(snapshot({ song_id: "ended-song" }));
+      session.applySnapshot(
+        snapshot({ song_id: "ended-song", is_playing: false }),
+      );
 
       await session.onEnded("ended-song");
 
+      expect(session.getPositionClock().playingSinceMs).toBeNull();
       expect(deps.queue.pushToHistory).not.toHaveBeenCalled();
       expect(deps.transport.play).not.toHaveBeenCalled();
     });

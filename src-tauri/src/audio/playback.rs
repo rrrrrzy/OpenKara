@@ -247,6 +247,7 @@ pub struct PlaybackController {
     pub(crate) prepared_track: Option<PreparedTrack>,
     pub(crate) transition_serial: u64,
     pub(crate) pending_transition_out: Option<CompletedTransition>,
+    pending_natural_end: bool,
     pub(crate) expected_preload_request_generation: PreloadRequestGeneration,
     pub(crate) crossfade_config: CrossfadeConfig,
     pub(crate) active_crossfade: Option<ActiveCrossfade>,
@@ -269,6 +270,7 @@ impl Default for PlaybackController {
             prepared_track: None,
             transition_serial: 0,
             pending_transition_out: None,
+            pending_natural_end: false,
             expected_preload_request_generation: PreloadRequestGeneration(0),
             crossfade_config: CrossfadeConfig {
                 enabled: false,
@@ -284,6 +286,7 @@ impl Default for PlaybackController {
 impl PlaybackController {
     fn bump_transport_generation(&mut self) {
         self.transport_generation = self.transport_generation.saturating_add(1);
+        self.pending_natural_end = false;
     }
 
     pub fn start_track(
@@ -295,6 +298,7 @@ impl PlaybackController {
         self.loading_song_id = None;
         self.playlist_mode = false;
         let is_playing = !std::mem::take(&mut self.pause_when_loaded);
+        self.pending_natural_end = false;
         self.cancel_crossfade_and_prepared();
         self.current_track = Some(LoadedTrack {
             song_id,
@@ -319,6 +323,7 @@ impl PlaybackController {
         self.loading_song_id = None;
         self.playlist_mode = false;
         let is_playing = !std::mem::take(&mut self.pause_when_loaded);
+        self.pending_natural_end = false;
         self.cancel_crossfade_and_prepared();
         self.current_track = Some(LoadedTrack {
             song_id,
@@ -630,16 +635,9 @@ impl PlaybackController {
     }
 
     pub fn snapshot(&mut self) -> PlaybackStateSnapshot {
-        if let Some(track) = self.current_track.as_mut() {
+        if let Some(track) = self.current_track.as_ref() {
             let duration_ms = track.duration_ms();
-            let raw_position = track.position_ms();
-
-            let position_ms = if duration_ms > 0 && raw_position >= duration_ms {
-                track.is_playing = false;
-                duration_ms
-            } else {
-                raw_position
-            };
+            let position_ms = track.position_ms();
 
             let stem_mode = track.stems.as_ref().map(|s| match s {
                 LoadedStems::TwoStem { .. } => "two_stem".to_owned(),
@@ -755,6 +753,7 @@ impl PlaybackController {
 
     pub fn clear_track(&mut self) {
         self.current_track = None;
+        self.pending_natural_end = false;
         self.loading_song_id = None;
         self.pause_when_loaded = false;
         self.fade = FadeState::None;
@@ -881,22 +880,37 @@ impl PlaybackController {
         }
     }
 
-    pub(crate) fn finalize_streaming_natural_end(&mut self) {
-        let Some(track) = self.current_track.as_mut() else {
-            return;
-        };
-        let Some(streaming) = track.streaming.as_ref() else {
-            return;
-        };
-        if !streaming.all_eof_and_drained() {
-            return;
+    pub(crate) fn finish_or_swap_at_eof(&mut self) -> bool {
+        if !self.current_track_is_playing() || !self.current_track_reached_eof() {
+            return false;
         }
-        if track.is_playing {
-            track.is_playing = false;
+
+        let streaming = self
+            .current_track
+            .as_ref()
+            .is_some_and(|track| track.streaming.is_some());
+        if !streaming && self.perform_gapless_swap() {
+            return true;
         }
-        if track.original_audio.duration_ms == 0 {
+
+        let track = self.current_track.as_mut().expect("EOF requires a track");
+        if streaming && track.original_audio.duration_ms == 0 {
             track.original_audio.duration_ms = track.position_ms();
         }
+        track.is_playing = false;
+        self.fade = FadeState::None;
+        self.is_buffering = false;
+        self.pending_natural_end = true;
+        false
+    }
+
+    pub(crate) fn drain_natural_end(&mut self) -> Option<PlaybackEndedEvent> {
+        if !std::mem::take(&mut self.pending_natural_end) {
+            return None;
+        }
+        self.current_track_ref().map(|track| PlaybackEndedEvent {
+            song_id: track.song_id.clone(),
+        })
     }
 
     pub(crate) fn current_track_reached_eof(&self) -> bool {
@@ -1052,7 +1066,7 @@ impl PlaybackController {
             FadeState::FadingOut { start } => {
                 let elapsed = start.elapsed();
                 if elapsed >= FADE_DURATION {
-                    self.fade = FadeState::None;
+                    self.finalize_fade_if_complete();
                     Some(0.0)
                 } else {
                     Some(1.0 - elapsed.as_secs_f32() / FADE_DURATION.as_secs_f32())
@@ -1738,6 +1752,33 @@ mod tests {
             controller.expected_preload_request_generation,
             super::PreloadRequestGeneration(1)
         );
+    }
+
+    #[test]
+    fn playback_controls_discard_an_undelivered_natural_end() {
+        for action in ["seek", "pause", "new track"] {
+            let mut controller = super::PlaybackController::default();
+            let audio = make_decoded();
+            let frames = audio.samples.len() / audio.channels;
+            controller.start_track("song-a".into(), audio, 0);
+            controller.advance_render_frame(frames as u64);
+            assert!(!controller.finish_or_swap_at_eof());
+            assert!(controller.pending_natural_end);
+
+            match action {
+                "seek" => {
+                    controller.seek(0, 0).unwrap();
+                }
+                "pause" => {
+                    controller.pause(0).unwrap();
+                }
+                _ => {
+                    controller.start_track("song-b".into(), make_decoded(), 0);
+                }
+            }
+
+            assert!(controller.drain_natural_end().is_none(), "{action}");
+        }
     }
 
     #[test]

@@ -628,16 +628,18 @@ fn spawn_playback_position_emitter<R: Runtime>(
 ) {
     thread::spawn(move || {
         let mut last_emitted_position = None;
-        let mut was_playing = false;
-        let mut last_song_id: Option<String> = None;
         let mut last_emitted_state: Option<String> = None;
         let mut last_emitted_is_playing: Option<bool> = None;
 
         loop {
             thread::sleep(Duration::from_millis(PLAYBACK_POSITION_POLL_INTERVAL_MS));
 
-            let pending_transition = match playback.lock() {
-                Ok(mut controller) => controller.drain_pending_transition(),
+            let (pending_transition, snapshot, pending_end) = match playback.lock() {
+                Ok(mut controller) => (
+                    controller.drain_pending_transition(),
+                    controller.snapshot(),
+                    controller.drain_natural_end(),
+                ),
                 Err(_) => break,
             };
             if let Some(transition) = pending_transition {
@@ -655,32 +657,6 @@ fn spawn_playback_position_emitter<R: Runtime>(
                 last_emitted_is_playing = None;
             }
 
-            let snapshot = match playback.lock() {
-                Ok(mut controller) => controller.snapshot(),
-                Err(_) => break,
-            };
-
-            if was_playing
-                && !snapshot.is_playing
-                && snapshot
-                    .duration_ms
-                    .is_some_and(|d| snapshot.position_ms >= d)
-                && last_song_id.is_some()
-                && last_song_id == snapshot.song_id
-            {
-                if let Some(ref song_id) = snapshot.song_id {
-                    let _ = app_handle.emit(
-                        audio::playback::PLAYBACK_ENDED_EVENT,
-                        audio::playback::PlaybackEndedEvent {
-                            song_id: song_id.clone(),
-                        },
-                    );
-                }
-            }
-
-            was_playing = snapshot.is_playing;
-            last_song_id = snapshot.song_id.clone();
-
             if snapshot.song_id.is_none() {
                 last_emitted_position = None;
                 last_emitted_state = None;
@@ -688,12 +664,14 @@ fn spawn_playback_position_emitter<R: Runtime>(
                 continue;
             }
 
-            if should_emit_playback_position(
-                last_emitted_position,
-                last_emitted_state.as_deref(),
-                last_emitted_is_playing,
-                &snapshot,
-            ) {
+            if pending_end.is_some()
+                || should_emit_playback_position(
+                    last_emitted_position,
+                    last_emitted_state.as_deref(),
+                    last_emitted_is_playing,
+                    &snapshot,
+                )
+            {
                 let _ = app_handle.emit(
                     audio::playback::PLAYBACK_POSITION_EVENT,
                     audio::playback::playback_position_event(&snapshot),
@@ -701,6 +679,9 @@ fn spawn_playback_position_emitter<R: Runtime>(
                 last_emitted_position = Some(snapshot.position_ms);
                 last_emitted_state = Some(snapshot.state.clone());
                 last_emitted_is_playing = Some(snapshot.is_playing);
+            }
+            if let Some(event) = pending_end {
+                let _ = app_handle.emit(audio::playback::PLAYBACK_ENDED_EVENT, event);
             }
         }
     });

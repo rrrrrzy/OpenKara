@@ -40,14 +40,18 @@ export function SeekBar({
   const playingSinceMs = usePlayerStore((s) => s.playingSinceMs);
   const seek = usePlayerStore((s) => s.seek);
 
+  const durationMs = snapshot?.duration_ms ?? 0;
   const [displayPositionMs, setDisplayPositionMs] = useState(positionMs);
+  const displayedPosition =
+    durationMs > 0
+      ? clampPosition(displayPositionMs, durationMs)
+      : displayPositionMs;
   const displayPositionMsRef = useRef(positionMs);
   const elapsedLabelRef = useRef<HTMLSpanElement>(null);
   const fillRef = useRef<HTMLDivElement>(null);
-  const durationMs = snapshot?.duration_ms ?? 0;
 
   const progressPercent =
-    durationMs > 0 ? (displayPositionMs / durationMs) * 100 : 0;
+    durationMs > 0 ? (displayedPosition / durationMs) * 100 : 0;
 
   const barRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -60,14 +64,16 @@ export function SeekBar({
     let rafId = 0;
     let lastRenderedSecond = Number.NaN;
     const tick = () => {
-      const current = isDraggingRef.current
+      const position = isDraggingRef.current
         ? (dragPercentRef.current / 100) * durationMs
         : selectCurrentPositionMs({
             snapshot,
             positionMs,
             playingSinceMs,
           });
-      displayPositionMsRef.current = current;
+      const current =
+        durationMs > 0 ? clampPosition(position, durationMs) : position;
+      displayPositionMsRef.current = position;
       const percent = durationMs > 0 ? (current / durationMs) * 100 : 0;
       if (fillRef.current) {
         fillRef.current.style.width = `${percent}%`;
@@ -273,7 +279,7 @@ export function SeekBar({
   const displayPercent = isDragging ? dragPercent : progressPercent;
   const displayMs = isDragging
     ? (dragPercent / 100) * durationMs
-    : displayPositionMs;
+    : displayedPosition;
 
   const handleKeyDown = useCallback(
     (event: React.KeyboardEvent<HTMLDivElement>) => {
